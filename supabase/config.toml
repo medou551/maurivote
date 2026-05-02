@@ -1,4 +1,4 @@
-﻿[api]
+[api]
 port = 54321
 schemas = ["public", "storage", "graphql_public"]
 extra_search_path = ["public", "extensions"]
