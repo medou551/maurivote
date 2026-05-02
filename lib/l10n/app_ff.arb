@@ -1,0 +1,151 @@
+{
+  "@@locale": "ff",
+  "@@last_modified": "2026-04-01T00:00:00.000000",
+
+  "appTitle": "MauriVote",
+  "appSubtitle": "Foo Soy Elektironiiwal · Laamordu Lislaamu Muritani",
+
+  "login_title": "Wuurnde Cellal",
+  "login_nni_label": "Nimero Ndiwoowa Leydi (NNI)",
+  "login_nni_hint": "Sappo Limle",
+  "login_nni_description": "Nimero Ndiwoowa leydi (limle 10)",
+  "login_send_otp": "Heɓ Code SMS",
+  "login_help": "Holi ko haɗi? Nuldu CENI",
+
+  "otp_title": "Jaɓɓugol SMS",
+  "otp_subtitle": "Naatnu code sappo-jeegom limle e nder SMS maa\n{phone}",
+  "@otp_subtitle": { "placeholders": { "phone": { "type": "String" } } },
+  "otp_valid_for": "Code woni haa {time}",
+  "@otp_valid_for": { "placeholders": { "time": { "type": "String" } } },
+  "otp_resend": "Ustu Code Keso",
+  "otp_validate": "Jaɓɓu Code",
+  "otp_attempts": "{count} / {max} miijo",
+  "@otp_attempts": {
+    "placeholders": {
+      "count": { "type": "int" },
+      "max": { "type": "int" }
+    }
+  },
+
+  "biometric_title": "Jaɓɓugol Bioometrik",
+  "biometric_subtitle": "Naatnu yeeso maa walla hurgito keerol ngol",
+  "biometric_unavailable": "Bioometrik alaa dow appareil maa",
+  "biometric_skip": "Yah Sanne Bioometrik",
+  "biometric_validate": "Jaɓɓu e Bioometrik",
+
+  "home_greeting": "Jam waali, {name} 👋",
+  "@home_greeting": { "placeholders": { "name": { "type": "String" } } },
+  "home_subtitle": "Coodtirde Laamordu Lislaamu Muritani",
+  "home_filter_all": "Fow",
+  "home_filter_active": "Ñoownuɗe",
+  "home_filter_upcoming": "Ko Artata",
+  "home_filter_past": "Ko Warti",
+  "home_no_elections": "Coodtirde alaa jooni",
+  "home_loading_error": "Rokkude coodtirde waɗaani",
+  "home_retry": "Miijo Keso",
+
+  "election_detail_candidates": "Kandidaaji — Ceertu {tour}",
+  "@election_detail_candidates": { "placeholders": { "tour": { "type": "int" } } },
+  "election_vote_now": "Foo Jooni — Ceertu {tour}",
+  "@election_vote_now": { "placeholders": { "tour": { "type": "int" } } },
+
+  "vote_title": "Foo",
+  "vote_select_candidate": "Suɓo kandidaa",
+  "vote_confirm": "Jaɓɓu Foo Am",
+  "vote_cancel": "Haɓɓu",
+  "vote_confirmation_title": "Jaɓɓugol Foo",
+  "vote_check_1": "Mi jaɓɓii ko kandidaa ngoo ko suɓo am.",
+  "vote_check_2": "Mi faami ko foo am roondaaki keso koo tiiɗi.",
+  "vote_submit": "Nuldu Foo Am",
+  "vote_sending": "Ñolliinde...",
+  "vote_warning": "Foo ngoo heewi koo, waɗaano falnde.",
+
+  "vote_error_already_voted": "Mba fooi daddi coodtirde ndee.",
+  "vote_error_election_closed": "Sahaa foo uddi.",
+  "vote_error_session_expired": "Wuurnde maa uddi. Naatno keso.",
+  "vote_error_network": "Juumre resoo. Humpito connect maa.",
+
+  "receipt_title": "Foo Am Jokkondiraa!",
+  "receipt_subtitle": "Foo maa tiiɗinaa e koodirde pellital.",
+  "receipt_qr_label": "Code Jaɓɓugol",
+  "receipt_anonymity_title": "Innde maa waɗaano",
+  "receipt_anonymity_desc": "QR Code ngoo jannginoo ko mba fooi, duwaan suɓo maa.",
+  "receipt_copy": "Naannu",
+  "receipt_share": "Yeeso",
+  "receipt_home": "Rutto Suudu Mawndu",
+  "receipt_hash_copied": "Naannaa!",
+
+  "results_title": "Juuɗe",
+  "results_live": "Faandare Jooni",
+  "results_tour": "Ceertu {tour}",
+  "@results_tour": { "placeholders": { "tour": { "type": "int" } } },
+  "results_total_votes": "Fow: {total} foo",
+  "@results_total_votes": { "placeholders": { "total": { "type": "String" } } },
+  "results_detailed": "Juuɗe Tiiɗɗe",
+  "results_empty": "Juuɗe artata coodtirde ndee hawri",
+  "results_votes": "{count} foo",
+  "@results_votes": { "placeholders": { "count": { "type": "String" } } },
+
+  "profil_title": "Profil Am",
+  "profil_verified": "Foowowo Jaɓɓaaɗo",
+  "profil_personal_info": "Humpito Maɗɗo",
+  "profil_electoral_info": "Humpito Coodtirde",
+  "profil_settings": "Laabi",
+  "profil_nni": "NNI",
+  "profil_dob": "Ñalnde Jibinande",
+  "profil_gender": "Jinnde",
+  "profil_phone": "Telefon",
+  "profil_commune": "Komiin",
+  "profil_wilaya": "Wilaya",
+  "profil_bureau": "Suudu Foo Am",
+  "profil_bureau_map": "Yiy Kartal",
+  "profil_language": "Demngal",
+  "profil_ceni_help": "Ballal & CENI",
+  "profil_ceni_website": "Laawol CENI",
+  "profil_logout": "Yaltu",
+  "profil_logout_confirm": "Mbadda yaltude MauriVote?",
+  "profil_logout_cancel": "Haɓɓu",
+  "profil_male": "Gorko",
+  "profil_female": "Debbo",
+
+  "bureau_title": "Suudu Foo Am",
+  "bureau_hours": "Waktu: 07h00 — 19h00",
+  "bureau_directions": "Laawol Google Maps",
+  "bureau_accessible": "Humpitii Neɗɗanke Miijaango",
+
+  "offline_banner": "Alaa Resoo — Humpito jogiiɗo waawa yaawnude",
+  "offline_vote_queued": "Foo holaa — nuldata resoo artii",
+
+  "error_network": "Juumre resoo. Humpito connect.",
+  "error_unknown": "Juumre weltaano.",
+  "error_retry": "Miijo Keso",
+
+  "ceni_name": "Komite Coodtirde Leydi Gasɗo",
+  "ceni_country": "Laamordu Lislaamu Muritani",
+
+  "nav_elections": "Coodtirde",
+  "nav_results": "Juuɗe",
+  "nav_profile": "Profil",
+
+  "type_presidentielle": "Koolaaɗo Leydi",
+  "type_legislative": "Depiteeji",
+  "type_municipale": "Komiin",
+  "type_regionale": "Wilaya",
+  "type_referendum": "Miijo Leydi",
+
+  "status_planifiee": "Ko Artata",
+  "status_en_cours": "Ñoownude",
+  "status_terminee": "Hawri",
+  "status_annulee": "Haɓɓaama",
+
+  "independent_candidate": "Kandidaa Gasɗo",
+  "round_label": "Ceertu {n}/{total}",
+  "@round_label": {
+    "placeholders": {
+      "n": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+
+  "version": "MauriVote v1.0.0 — © 2026 CENI Muritani"
+}

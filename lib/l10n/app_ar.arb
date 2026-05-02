@@ -1,0 +1,151 @@
+{
+  "@@locale": "ar",
+  "@@last_modified": "2026-04-01T00:00:00.000000",
+
+  "appTitle": "موريفوت",
+  "appSubtitle": "التصويت الإلكتروني · الجمهورية الإسلامية الموريتانية",
+
+  "login_title": "تسجيل الدخول الآمن",
+  "login_nni_label": "رقم الهوية الوطنية",
+  "login_nni_hint": "10 أرقام",
+  "login_nni_description": "الرقم الوطني للتعريف",
+  "login_send_otp": "استقبال رمز SMS",
+  "login_help": "هل تحتاج مساعدة؟ تواصل مع اللجنة الانتخابية",
+
+  "otp_title": "التحقق عبر SMS",
+  "otp_subtitle": "أدخل الرمز المكون من 6 أرقام المرسل إلى\n{phone}",
+  "@otp_subtitle": { "placeholders": { "phone": { "type": "String" } } },
+  "otp_valid_for": "الرمز صالح لمدة {time}",
+  "@otp_valid_for": { "placeholders": { "time": { "type": "String" } } },
+  "otp_resend": "إعادة إرسال رمز جديد",
+  "otp_validate": "التحقق من الرمز",
+  "otp_attempts": "{count} / {max} محاولات",
+  "@otp_attempts": {
+    "placeholders": {
+      "count": { "type": "int" },
+      "max": { "type": "int" }
+    }
+  },
+
+  "biometric_title": "المصادقة البيومترية",
+  "biometric_subtitle": "ضع إصبعك على الحساس أو انظر إلى الكاميرا",
+  "biometric_unavailable": "البيومترية غير متاحة",
+  "biometric_skip": "المتابعة بدون بيومترية",
+  "biometric_validate": "التحقق بالبيومترية",
+
+  "home_greeting": "مرحباً، {name} 👋",
+  "@home_greeting": { "placeholders": { "name": { "type": "String" } } },
+  "home_subtitle": "انتخابات الجمهورية الإسلامية الموريتانية",
+  "home_filter_all": "الكل",
+  "home_filter_active": "جارية",
+  "home_filter_upcoming": "قادمة",
+  "home_filter_past": "منتهية",
+  "home_no_elections": "لا توجد انتخابات متاحة",
+  "home_loading_error": "تعذر تحميل الانتخابات",
+  "home_retry": "إعادة المحاولة",
+
+  "election_detail_candidates": "المرشحون — الدور {tour}",
+  "@election_detail_candidates": { "placeholders": { "tour": { "type": "int" } } },
+  "election_vote_now": "التصويت الآن — الدور {tour}",
+  "@election_vote_now": { "placeholders": { "tour": { "type": "int" } } },
+
+  "vote_title": "التصويت",
+  "vote_select_candidate": "اختر مرشحاً",
+  "vote_confirm": "تأكيد التصويت",
+  "vote_cancel": "إلغاء",
+  "vote_confirmation_title": "تأكيد التصويت",
+  "vote_check_1": "أؤكد أن هذا المرشح هو اختياري النهائي.",
+  "vote_check_2": "أفهم أن صوتي لا رجعة فيه وسيتم تشفيره بشكل مجهول.",
+  "vote_submit": "إرسال صوتي",
+  "vote_sending": "جارٍ الإرسال...",
+  "vote_warning": "هذا التصويت نهائي ولا يمكن تعديله أو إلغاؤه بعد الإرسال.",
+
+  "vote_error_already_voted": "لقد صوّتت بالفعل في هذه الانتخابات.",
+  "vote_error_election_closed": "انتهت فترة التصويت.",
+  "vote_error_session_expired": "انتهت الجلسة. يرجى تسجيل الدخول مجدداً.",
+  "vote_error_network": "خطأ في الشبكة. تحقق من اتصالك.",
+
+  "receipt_title": "تم تسجيل الصوت!",
+  "receipt_subtitle": "تم تشفير صوتك وتسجيله بشكل آمن.",
+  "receipt_qr_label": "رمز التحقق",
+  "receipt_anonymity_title": "هويتك محفوظة",
+  "receipt_anonymity_desc": "يؤكد رمز QR هذا أنك صوّتت دون الكشف عن اختيارك.",
+  "receipt_copy": "نسخ",
+  "receipt_share": "مشاركة",
+  "receipt_home": "العودة إلى الرئيسية",
+  "receipt_hash_copied": "تم النسخ!",
+
+  "results_title": "النتائج",
+  "results_live": "تحديث مباشر",
+  "results_tour": "الدور {tour}",
+  "@results_tour": { "placeholders": { "tour": { "type": "int" } } },
+  "results_total_votes": "المجموع: {total} صوت",
+  "@results_total_votes": { "placeholders": { "total": { "type": "String" } } },
+  "results_detailed": "النتائج التفصيلية",
+  "results_empty": "ستتوفر النتائج بعد إغلاق مراكز الاقتراع",
+  "results_votes": "{count} صوت",
+  "@results_votes": { "placeholders": { "count": { "type": "String" } } },
+
+  "profil_title": "ملفي الشخصي",
+  "profil_verified": "ناخب موثق",
+  "profil_personal_info": "المعلومات الشخصية",
+  "profil_electoral_info": "المعلومات الانتخابية",
+  "profil_settings": "الإعدادات",
+  "profil_nni": "رقم الهوية الوطنية",
+  "profil_dob": "تاريخ الميلاد",
+  "profil_gender": "الجنس",
+  "profil_phone": "الهاتف",
+  "profil_commune": "البلدية",
+  "profil_wilaya": "الولاية",
+  "profil_bureau": "مركز اقتراعي",
+  "profil_bureau_map": "عرض على الخريطة",
+  "profil_language": "اللغة",
+  "profil_ceni_help": "المساعدة والتواصل مع اللجنة",
+  "profil_ceni_website": "موقع اللجنة الانتخابية",
+  "profil_logout": "تسجيل الخروج",
+  "profil_logout_confirm": "هل تريد تسجيل الخروج من موريفوت؟",
+  "profil_logout_cancel": "إلغاء",
+  "profil_male": "ذكر",
+  "profil_female": "أنثى",
+
+  "bureau_title": "مركز اقتراعي",
+  "bureau_hours": "المواعيد: 07:00 — 19:00",
+  "bureau_directions": "الاتجاهات عبر خرائط جوجل",
+  "bureau_accessible": "متاح لذوي الاحتياجات الخاصة",
+
+  "offline_banner": "وضع عدم الاتصال — قد لا تكون البيانات محدّثة",
+  "offline_vote_queued": "تم وضع الصوت في قائمة الانتظار — سيُرسل عند الاتصال",
+
+  "error_network": "خطأ في الشبكة. تحقق من اتصالك.",
+  "error_unknown": "حدث خطأ غير متوقع.",
+  "error_retry": "إعادة المحاولة",
+
+  "ceni_name": "اللجنة الانتخابية الوطنية المستقلة",
+  "ceni_country": "الجمهورية الإسلامية الموريتانية",
+
+  "nav_elections": "الانتخابات",
+  "nav_results": "النتائج",
+  "nav_profile": "ملفي",
+
+  "type_presidentielle": "رئاسية",
+  "type_legislative": "تشريعية",
+  "type_municipale": "بلدية",
+  "type_regionale": "جهوية",
+  "type_referendum": "استفتاء",
+
+  "status_planifiee": "قادمة",
+  "status_en_cours": "جارية",
+  "status_terminee": "منتهية",
+  "status_annulee": "ملغاة",
+
+  "independent_candidate": "مرشح مستقل",
+  "round_label": "الدور {n}/{total}",
+  "@round_label": {
+    "placeholders": {
+      "n": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+
+  "version": "موريفوت الإصدار 1.0.0 — © 2026 اللجنة الانتخابية الموريتانية"
+}

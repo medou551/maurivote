@@ -1,0 +1,153 @@
+{
+  "@@locale": "fr",
+  "@@last_modified": "2026-04-01T00:00:00.000000",
+
+  "appTitle": "MauriVote",
+  "@appTitle": { "description": "Titre de l'application" },
+
+  "appSubtitle": "Vote Électronique · République Islamique de Mauritanie",
+
+  "login_title": "Connexion sécurisée",
+  "login_nni_label": "Votre NNI",
+  "login_nni_hint": "10 chiffres",
+  "login_nni_description": "Numéro National d'Identification",
+  "login_send_otp": "Recevoir le code SMS",
+  "login_help": "Besoin d'aide ? Contactez la CENI",
+
+  "otp_title": "Vérification SMS",
+  "otp_subtitle": "Entrez le code à 6 chiffres reçu au\n{phone}",
+  "@otp_subtitle": { "placeholders": { "phone": { "type": "String" } } },
+  "otp_valid_for": "Code valide encore {time}",
+  "@otp_valid_for": { "placeholders": { "time": { "type": "String" } } },
+  "otp_resend": "Renvoyer un nouveau code",
+  "otp_validate": "Valider le code",
+  "otp_attempts": "{count} / {max} tentatives",
+  "@otp_attempts": {
+    "placeholders": {
+      "count": { "type": "int" },
+      "max": { "type": "int" }
+    }
+  },
+
+  "biometric_title": "Authentification biométrique",
+  "biometric_subtitle": "Posez votre doigt sur le capteur ou regardez la caméra",
+  "biometric_unavailable": "Biométrie non disponible",
+  "biometric_skip": "Continuer sans biométrie",
+  "biometric_validate": "Valider avec la biométrie",
+
+  "home_greeting": "Bonjour, {name} 👋",
+  "@home_greeting": { "placeholders": { "name": { "type": "String" } } },
+  "home_subtitle": "Élections de la République Islamique de Mauritanie",
+  "home_filter_all": "Toutes",
+  "home_filter_active": "En cours",
+  "home_filter_upcoming": "À venir",
+  "home_filter_past": "Terminées",
+  "home_no_elections": "Aucune élection disponible",
+  "home_loading_error": "Impossible de charger les élections",
+  "home_retry": "Réessayer",
+
+  "election_detail_candidates": "Candidats — Tour {tour}",
+  "@election_detail_candidates": { "placeholders": { "tour": { "type": "int" } } },
+  "election_vote_now": "Voter maintenant — Tour {tour}",
+  "@election_vote_now": { "placeholders": { "tour": { "type": "int" } } },
+
+  "vote_title": "Voter",
+  "vote_select_candidate": "Sélectionnez un candidat",
+  "vote_confirm": "Confirmer mon vote",
+  "vote_cancel": "Annuler",
+  "vote_confirmation_title": "Confirmation du vote",
+  "vote_check_1": "Je confirme que ce candidat est bien mon choix définitif.",
+  "vote_check_2": "Je comprends que mon vote est irrévocable et sera chiffré de façon anonyme.",
+  "vote_submit": "Soumettre mon vote",
+  "vote_sending": "Envoi en cours...",
+  "vote_warning": "Ce vote est définitif et ne peut être ni modifié ni annulé après soumission.",
+
+  "vote_error_already_voted": "Vous avez déjà voté pour cette élection.",
+  "vote_error_election_closed": "La période de vote est terminée.",
+  "vote_error_session_expired": "Session expirée. Reconnectez-vous.",
+  "vote_error_network": "Erreur réseau. Vérifiez votre connexion.",
+
+  "receipt_title": "Vote enregistré !",
+  "receipt_subtitle": "Votre vote a été chiffré et enregistré de manière sécurisée.",
+  "receipt_qr_label": "Code de vérification",
+  "receipt_anonymity_title": "Votre anonymat est préservé",
+  "receipt_anonymity_desc": "Ce QR Code confirme que vous avez voté, sans révéler votre choix.",
+  "receipt_copy": "Copier",
+  "receipt_share": "Partager",
+  "receipt_home": "Retour à l'accueil",
+  "receipt_hash_copied": "Hash copié !",
+
+  "results_title": "Résultats",
+  "results_live": "Mise à jour en direct",
+  "results_tour": "Tour {tour}",
+  "@results_tour": { "placeholders": { "tour": { "type": "int" } } },
+  "results_total_votes": "Total : {total} voix exprimées",
+  "@results_total_votes": { "placeholders": { "total": { "type": "String" } } },
+  "results_detailed": "Résultats détaillés",
+  "results_empty": "Les résultats seront disponibles à la fermeture des bureaux",
+  "results_votes": "{count} voix",
+  "@results_votes": { "placeholders": { "count": { "type": "String" } } },
+
+  "profil_title": "Mon Profil",
+  "profil_verified": "Électeur vérifié",
+  "profil_personal_info": "Informations personnelles",
+  "profil_electoral_info": "Informations électorales",
+  "profil_settings": "Paramètres",
+  "profil_nni": "NNI",
+  "profil_dob": "Date de naissance",
+  "profil_gender": "Sexe",
+  "profil_phone": "Téléphone",
+  "profil_commune": "Commune",
+  "profil_wilaya": "Wilaya",
+  "profil_bureau": "Mon bureau de vote",
+  "profil_bureau_map": "Voir sur la carte",
+  "profil_language": "Langue",
+  "profil_ceni_help": "Aide & Contact CENI",
+  "profil_ceni_website": "Site CENI",
+  "profil_logout": "Déconnexion",
+  "profil_logout_confirm": "Voulez-vous vous déconnecter de MauriVote ?",
+  "profil_logout_cancel": "Annuler",
+  "profil_male": "Masculin",
+  "profil_female": "Féminin",
+
+  "bureau_title": "Mon Bureau de Vote",
+  "bureau_hours": "Horaires : 07h00 — 19h00",
+  "bureau_directions": "Itinéraire Google Maps",
+  "bureau_accessible": "Accessible PMR",
+
+  "offline_banner": "Mode hors-ligne — Les données peuvent ne pas être à jour",
+  "offline_vote_queued": "Vote mis en file d'attente — sera envoyé dès la reconnexion",
+
+  "error_network": "Erreur réseau. Vérifiez votre connexion.",
+  "error_unknown": "Une erreur inattendue est survenue.",
+  "error_retry": "Réessayer",
+
+  "ceni_name": "Commission Électorale Nationale Indépendante",
+  "ceni_country": "République Islamique de Mauritanie",
+
+  "nav_elections": "Élections",
+  "nav_results": "Résultats",
+  "nav_profile": "Profil",
+
+  "type_presidentielle": "Présidentielle",
+  "type_legislative": "Législative",
+  "type_municipale": "Municipale",
+  "type_regionale": "Régionale",
+  "type_referendum": "Référendum",
+
+  "status_planifiee": "À venir",
+  "status_en_cours": "En cours",
+  "status_terminee": "Terminée",
+  "status_annulee": "Annulée",
+
+  "independent_candidate": "Candidat indépendant",
+  "round_label": "Tour {n}/{total}",
+  "@round_label": {
+    "placeholders": {
+      "n": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+
+  "version": "MauriVote v1.0.0 — © 2026 CENI Mauritanie"
+}

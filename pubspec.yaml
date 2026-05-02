@@ -1,0 +1,109 @@
+name: maurivote
+description: Application de vote électronique — République Islamique de Mauritanie
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # ── Backend Supabase ─────────────────────────────────────────────────────
+  supabase_flutter: ^2.3.0
+  flutter_dotenv: ^5.1.0
+
+  # ── Authentification & Sécurité ──────────────────────────────────────────
+  local_auth: ^2.1.7
+  flutter_secure_storage: ^9.0.0
+  encrypt: ^5.0.3
+  crypto: ^3.0.3
+  flutter_jailbreak_detection: ^1.8.0
+  secure_application: ^4.0.1
+
+  # ── Navigation ───────────────────────────────────────────────────────────
+  go_router: ^13.0.0
+
+  # ── Gestion d'état (Riverpod) ─────────────────────────────────────────────
+  flutter_riverpod: ^2.4.9
+  riverpod_annotation: ^2.3.3
+
+  # ── UI & Animations ──────────────────────────────────────────────────────
+  lottie: ^3.0.0
+  cached_network_image: ^3.3.0
+  shimmer: ^3.0.0
+  fl_chart: ^0.66.0
+  flutter_animate: ^4.3.0
+  smooth_page_indicator: ^1.1.0
+  pin_code_fields: ^8.0.1
+  awesome_dialog: ^3.1.0
+  qr_flutter: ^4.1.0
+  data_table_2: ^2.5.9
+  countup_flutter: ^0.4.0
+
+  # ── Cartes & Géolocalisation ─────────────────────────────────────────────
+  google_maps_flutter: ^2.5.3
+  flutter_map: ^6.1.0
+  url_launcher: ^6.2.3
+
+  # ── Stockage local & Mode Offline ────────────────────────────────────────
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  connectivity_plus: ^5.0.2
+
+  # ── Notifications Push ───────────────────────────────────────────────────
+  firebase_core: ^2.24.2
+  firebase_messaging: ^14.7.10
+  firebase_crashlytics: ^3.4.9
+  flutter_local_notifications: ^17.0.0
+
+  # ── Internationalisation ─────────────────────────────────────────────────
+  intl: ^0.19.0
+
+  # ── Formulaires ──────────────────────────────────────────────────────────
+  flutter_form_builder: ^9.2.1
+  form_builder_validators: ^9.1.0
+
+  # ── Utilitaires ──────────────────────────────────────────────────────────
+  share_plus: ^7.2.1
+  shared_preferences: ^2.2.2
+  dio: ^5.4.0
+  intl_phone_field: ^3.2.0
+  flutter_countdown_timer: ^4.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+  mockito: ^5.4.4
+  build_runner: ^2.4.8
+  json_serializable: ^6.7.1
+  freezed: ^2.4.6
+  freezed_annotation: ^2.4.1
+  riverpod_generator: ^2.3.9
+
+flutter:
+  uses-material-design: true
+  generate: true   # Active l'internationalisation automatique
+
+  assets:
+    - .env
+    - assets/images/
+    - assets/animations/
+
+  fonts:
+    - family: Cairo         # Police arabe
+      fonts:
+        - asset: assets/fonts/Cairo-Regular.ttf
+        - asset: assets/fonts/Cairo-Bold.ttf
+          weight: 700
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto-Regular.ttf
+        - asset: assets/fonts/Roboto-Bold.ttf
+          weight: 700

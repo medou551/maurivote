@@ -1,0 +1,308 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_PROMETHEUS",
+      "label": "Prometheus",
+      "type": "datasource",
+      "pluginId": "prometheus"
+    }
+  ],
+  "__requires": [
+    { "type": "grafana", "id": "grafana", "name": "Grafana", "version": "10.0.0" },
+    { "type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0" }
+  ],
+  "title": "MauriVote — Tableau de Bord Production",
+  "uid": "maurivote-prod",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "tags": ["maurivote", "production", "mauritanie"],
+  "panels": [
+    {
+      "id": 1,
+      "title": "🗳️ Votes/minute (temps réel)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "description": "Nombre de votes soumis par minute — pic attendu à l'ouverture (07h00) et fermeture (19h00)",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "#1B5E20" },
+          "unit": "reqps",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 50 },
+              { "color": "red", "value": 100 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "tooltip": { "mode": "single" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "datasource": "${DS_PROMETHEUS}",
+          "expr": "rate(supabase_edge_function_invocations_total{function_name=\"submit-vote\"}[1m])",
+          "legendFormat": "Votes/min"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "⏱️ Latence p95 (Edge Function submit-vote)",
+      "type": "gauge",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "min": 0,
+          "max": 3000,
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1000 },
+              { "color": "orange", "value": 1500 },
+              { "color": "red", "value": 2000 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(supabase_edge_function_duration_seconds_bucket{function_name=\"submit-vote\"}[5m])) * 1000",
+          "legendFormat": "p95 latence"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "✅ Taux de succès des votes",
+      "type": "stat",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0, "max": 1,
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 0.95 },
+              { "color": "green", "value": 0.99 }
+            ]
+          },
+          "mappings": []
+        }
+      },
+      "targets": [
+        {
+          "expr": "1 - rate(supabase_edge_function_errors_total{function_name=\"submit-vote\"}[5m]) / rate(supabase_edge_function_invocations_total{function_name=\"submit-vote\"}[5m])"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "🗄️ Connexions PostgreSQL actives",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 8, "w": 8, "h": 7 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 80 },
+              { "color": "red", "value": 95 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "supabase_db_active_connections",
+          "legendFormat": "Connexions actives"
+        },
+        {
+          "expr": "supabase_db_max_connections",
+          "legendFormat": "Maximum autorisé"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "🌐 Requêtes REST API / minute",
+      "type": "timeseries",
+      "gridPos": { "x": 8, "y": 8, "w": 8, "h": 7 },
+      "targets": [
+        {
+          "expr": "rate(supabase_api_requests_total[1m])",
+          "legendFormat": "Requêtes/min"
+        },
+        {
+          "expr": "rate(supabase_api_requests_total{status=~\"5..\"}[1m])",
+          "legendFormat": "Erreurs 5xx/min"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "📊 Votes totaux par candidat",
+      "type": "bargauge",
+      "gridPos": { "x": 16, "y": 8, "w": 8, "h": 7 },
+      "description": "Mise à jour en temps réel depuis la vue resultats_publics",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "palette-classic" }
+        }
+      },
+      "targets": [
+        {
+          "expr": "maurivote_votes_by_candidate",
+          "legendFormat": "{{candidate_name}}"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "⚠️ Tentatives de double vote bloquées",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 15, "w": 6, "h": 5 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "fixed", "fixedColor": "orange" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 10 },
+              { "color": "red", "value": 100 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "increase(maurivote_double_vote_attempts_total[1h])",
+          "legendFormat": "Double votes bloqués (1h)"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "🔒 Violations RLS",
+      "type": "stat",
+      "gridPos": { "x": 6, "y": 15, "w": 6, "h": 5 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "increase(maurivote_rls_violations_total[1h])",
+          "legendFormat": "Violations RLS (1h)"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "📱 Électeurs connectés simultanément",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 15, "w": 6, "h": 5 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "fixed", "fixedColor": "#1B5E20" }
+        }
+      },
+      "targets": [
+        {
+          "expr": "supabase_realtime_connections_total",
+          "legendFormat": "Connexions WebSocket actives"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "💾 Stockage utilisé (Supabase Storage)",
+      "type": "gauge",
+      "gridPos": { "x": 18, "y": 15, "w": 6, "h": 5 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "max": 1073741824,
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 536870912 },
+              { "color": "red", "value": 900000000 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        { "expr": "supabase_storage_bytes_used", "legendFormat": "Stockage utilisé" }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "🌍 Taux de participation par Wilaya",
+      "type": "table",
+      "gridPos": { "x": 0, "y": 20, "w": 24, "h": 8 },
+      "description": "Nombre de votes par wilaya mauritanienne",
+      "fieldConfig": {
+        "defaults": { "unit": "short" },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Participation %" },
+            "properties": [
+              { "id": "unit", "value": "percent" },
+              { "id": "custom.displayMode", "value": "color-background" },
+              { "id": "thresholds", "value": {
+                "steps": [
+                  { "color": "red", "value": null },
+                  { "color": "yellow", "value": 30 },
+                  { "color": "green", "value": 60 }
+                ]
+              }}
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "expr": "maurivote_votes_by_wilaya",
+          "legendFormat": "{{wilaya_name}}"
+        }
+      ]
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "name": "Ouverture bureaux de vote",
+        "datasource": "${DS_PROMETHEUS}",
+        "expr": "maurivote_election_opened_timestamp",
+        "iconColor": "green",
+        "tags": ["election", "ouverture"]
+      },
+      {
+        "name": "Fermeture bureaux de vote",
+        "expr": "maurivote_election_closed_timestamp",
+        "iconColor": "red",
+        "tags": ["election", "fermeture"]
+      }
+    ]
+  }
+}
