@@ -1,0 +1,32 @@
+﻿name: MauriVote Security Scan
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1'
+
+jobs:
+  security:
+    name: Security Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verifier .env absent
+        run: |
+          if git ls-files --error-unmatch .env 2>/dev/null; then
+            echo "CRITIQUE : .env dans Git"; exit 1
+          fi
+          echo "OK : .env absent"
+
+      - uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      - name: Check Edge Functions
+        run: |
+          for f in supabase/functions/*/index.ts; do
+            deno check "$f" && echo "OK: $f"
+          done

@@ -1,0 +1,34 @@
+﻿name: MauriVote CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  deploy-supabase:
+    name: Deploy Supabase
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Deploy Edge Functions DEV
+        run: |
+          supabase functions deploy submit-vote --project-ref ${{ secrets.SUPABASE_DEV_PROJECT_REF }}
+          supabase functions deploy verify-vote --project-ref ${{ secrets.SUPABASE_DEV_PROJECT_REF }}
+          supabase functions deploy check-voted --project-ref ${{ secrets.SUPABASE_DEV_PROJECT_REF }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Smoke test
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://${{ secrets.SUPABASE_DEV_PROJECT_REF }}.supabase.co/rest/v1/elections?is_public=eq.true" \
+            -H "apikey: ${{ secrets.SUPABASE_DEV_ANON_KEY }}" --max-time 10)
+          echo "GET /elections : HTTP $STATUS"
+          [ "$STATUS" = "200" ] && echo "OK" || echo "ERREUR $STATUS"

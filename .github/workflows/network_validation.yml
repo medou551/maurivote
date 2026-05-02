@@ -1,0 +1,25 @@
+﻿name: MauriVote Network Validation
+
+on:
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: Validate Network
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Test DEV
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://${{ secrets.SUPABASE_DEV_PROJECT_REF }}.supabase.co/rest/v1/elections?is_public=eq.true" \
+            -H "apikey: ${{ secrets.SUPABASE_DEV_ANON_KEY }}")
+          echo "DEV elections : HTTP $STATUS"
+
+      - name: Test PROD
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://${{ secrets.SUPABASE_PROD_PROJECT_REF }}.supabase.co/rest/v1/elections?is_public=eq.true" \
+            -H "apikey: ${{ secrets.SUPABASE_PROD_ANON_KEY }}")
+          echo "PROD elections : HTTP $STATUS"
