@@ -1,9 +1,4 @@
-# ══════════════════════════════════════════════════════════════════════════════
-# MauriVote — Configuration Supabase CLI
-# Fichier : supabase/config.toml
-# ══════════════════════════════════════════════════════════════════════════════
-
-[api]
+﻿[api]
 port = 54321
 schemas = ["public", "storage", "graphql_public"]
 extra_search_path = ["public", "extensions"]
@@ -16,9 +11,8 @@ major_version = 15
 
 [studio]
 port = 54323
-api_url = "http://localhost"
 
-[inbucket]          # Serveur email de test local
+[inbucket]
 port = 54324
 smtp_port = 54325
 pop3_port = 54326
@@ -26,44 +20,24 @@ pop3_port = 54326
 [storage]
 file_size_limit = "50MiB"
 
-# ── Auth ─────────────────────────────────────────────────────────────────────
 [auth]
 site_url = "http://localhost:3000"
-additional_redirect_urls = ["https://maurivote.mr"]
 jwt_expiry = 3600
 enable_refresh_token_rotation = true
-refresh_token_reuse_interval = 10
-enable_signup = false               # CRITIQUE : les électeurs ne s'inscrivent pas eux-mêmes
 
 [auth.email]
 enable_signup = false
-enable_confirmations = false        # Pas d'email — seulement SMS OTP
+enable_confirmations = false
 
 [auth.sms]
 enable_signup = false
-enable_confirmations = true         # OTP SMS obligatoire
-template = "Votre code MauriVote : {{ .Code }} (valable 120 secondes)"
-
-[auth.sms.twilio]
-account_sid = "env(TWILIO_ACCOUNT_SID)"
-auth_token  = "env(TWILIO_AUTH_TOKEN)"
-message_service_sid = "env(TWILIO_MESSAGE_SID)"
-
-# ── Edge Functions ────────────────────────────────────────────────────────────
-[functions]
-verify_jwt = true                   # Toutes les fonctions requièrent JWT
+enable_confirmations = true
 
 [functions.submit-vote]
 verify_jwt = true
 
 [functions.verify-vote]
-verify_jwt = false                  # Vérification QR Code accessible sans connexion
+verify_jwt = false
 
-# ── Realtime ──────────────────────────────────────────────────────────────────
-[realtime]
-enabled = true
-ip_version = "IPv4"
-
-# ── Analytics ─────────────────────────────────────────────────────────────────
-[analytics]
-enabled = false                     # Désactivé pour la confidentialité
+[functions.check-voted]
+verify_jwt = true
