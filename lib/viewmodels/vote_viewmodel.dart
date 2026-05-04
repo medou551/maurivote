@@ -1,26 +1,28 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../models/models.dart';
 import '../services/vote_service.dart';
 import '../services/auth_service.dart';
 import '../services/offline_service.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
+import 'auth_viewmodel.dart';
 
 // ── Providers ─────────────────────────────────────────────────────────────────
-final voteServiceProvider   = Provider<VoteService>((_) => VoteService());
+final voteServiceProvider    = Provider<VoteService>((_) => VoteService());
 final offlineServiceProvider = Provider<OfflineService>((_) => OfflineService());
 
-/// Candidat actuellement sélectionné sur l'écran de vote
-final selectedCandidateProvider = StateProvider<Candidate?>(_ => null);
+class SelectedCandidateNotifier extends Notifier<Candidate?> {
+  @override
+  Candidate? build() => null;
+  void select(Candidate? c) => state = c;
+}
 
-/// État complet du processus de vote
+final selectedCandidateProvider =
+    NotifierProvider<SelectedCandidateNotifier, Candidate?>(
+  SelectedCandidateNotifier.new,
+);
+
 final voteStateProvider =
-    StateNotifierProvider<VoteNotifier, VoteState>((ref) {
-  return VoteNotifier(
-    ref.read(voteServiceProvider),
-    ref.read(authServiceProvider),
-    ref.read(offlineServiceProvider),
-  );
-});
+    NotifierProvider<VoteNotifier, VoteState>(VoteNotifier.new);
 
 /// Vérifie si l'électeur a déjà voté pour une élection donnée
 final hasVotedProvider =
@@ -37,9 +39,9 @@ enum VoteStatus { idle, loading, success, alreadyVoted, electionClosed, offline,
 
 class VoteState {
   final VoteStatus status;
-  final String?   recuHash;
-  final String?   errorMessage;
-  final bool      isOfflineQueued;
+  final String?    recuHash;
+  final String?    errorMessage;
+  final bool       isOfflineQueued;
 
   const VoteState({
     required this.status,
@@ -49,12 +51,14 @@ class VoteState {
   });
 
   VoteState copyWith({
-    VoteStatus? status, String? recuHash,
-    String? errorMessage, bool? isOfflineQueued,
+    VoteStatus? status,
+    String?     recuHash,
+    String?     errorMessage,
+    bool?       isOfflineQueued,
   }) => VoteState(
-    status: status ?? this.status,
-    recuHash: recuHash ?? this.recuHash,
-    errorMessage: errorMessage ?? this.errorMessage,
+    status:          status          ?? this.status,
+    recuHash:        recuHash        ?? this.recuHash,
+    errorMessage:    errorMessage    ?? this.errorMessage,
     isOfflineQueued: isOfflineQueued ?? this.isOfflineQueued,
   );
 
@@ -62,13 +66,18 @@ class VoteState {
 }
 
 // ── Notifier ──────────────────────────────────────────────────────────────────
-class VoteNotifier extends StateNotifier<VoteState> {
-  final VoteService    _voteService;
-  final SupabaseAuthService _auth;
-  final OfflineService _offline;
+class VoteNotifier extends Notifier<VoteState> {
+  late final VoteService          _voteService;
+  late final SupabaseAuthService  _auth;
+  late final OfflineService       _offline;
 
-  VoteNotifier(this._voteService, this._auth, this._offline)
-      : super(VoteState.initial());
+  @override
+  VoteState build() {
+    _voteService = ref.read(voteServiceProvider);
+    _auth        = ref.read(authServiceProvider);
+    _offline     = ref.read(offlineServiceProvider);
+    return VoteState.initial();
+  }
 
   Future<void> soumettre({
     required String electionId,
@@ -80,26 +89,24 @@ class VoteNotifier extends StateNotifier<VoteState> {
     final nni = await _auth.getCurrentNni();
     if (nni == null) {
       state = state.copyWith(
-        status: VoteStatus.error,
+        status:       VoteStatus.error,
         errorMessage: 'Session expirée. Reconnectez-vous.',
       );
       return;
     }
 
-    // Vérifier la connectivité
     final connectivity = await Connectivity().checkConnectivity();
     final hasNet = connectivity.any((r) => r != ConnectivityResult.none);
 
     if (!hasNet) {
-      // Mode offline : mettre en file d'attente
       final recuHash = DateTime.now().millisecondsSinceEpoch.toString();
       await _offline.savePendingVote(
         nni: nni, electionId: electionId,
         candidateId: candidateId, tour: tour, recuHash: recuHash,
       );
       state = state.copyWith(
-        status: VoteStatus.offline,
-        recuHash: recuHash,
+        status:          VoteStatus.offline,
+        recuHash:        recuHash,
         isOfflineQueued: true,
         errorMessage:
             'Pas de connexion Internet. Votre vote sera envoyé automatiquement '
@@ -108,21 +115,17 @@ class VoteNotifier extends StateNotifier<VoteState> {
       return;
     }
 
-    // Soumettre en ligne
-    final result = await _voteService.soumettrVote(
+    final result = await _voteService.soumettreVote(
       nni: nni, electionId: electionId,
       candidateId: candidateId, tour: tour,
     );
 
     if (result.isSuccess) {
       await _auth.recordActivity();
-      state = state.copyWith(
-        status: VoteStatus.success,
-        recuHash: result.recuHash,
-      );
+      state = state.copyWith(status: VoteStatus.success, recuHash: result.recuHash);
     } else {
       state = state.copyWith(
-        status: _mapError(result.errorType),
+        status:       _mapError(result.errorType),
         errorMessage: _errorMsg(result.errorType),
       );
     }
@@ -143,7 +146,7 @@ class VoteNotifier extends StateNotifier<VoteState> {
     VoteErrorType.alreadyVoted   => 'Vous avez déjà voté pour cette élection.',
     VoteErrorType.electionClosed => 'La période de vote est terminée.',
     VoteErrorType.sessionExpired => 'Session expirée. Reconnectez-vous.',
-    _                            => 'Erreur lors du soumission. Réessayez.',
+    _                            => 'Erreur lors de la soumission. Réessayez.',
   };
 }
 

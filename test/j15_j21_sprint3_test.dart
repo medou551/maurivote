@@ -52,7 +52,7 @@ void main() {
           leaderPct: 60.0, secondId: 'c2', secondPct: 40.0,
           hasAbsoluteMajority: true, nbCandidates: 2);
       expect(s.gap, closeTo(20.0, 0.01));
-      expect(s.get isClose, isFalse);
+      expect(s.isClose, isFalse);
     });
 
     test('isClose = true si gap < 5%', () {
@@ -60,7 +60,7 @@ void main() {
           leaderPct: 50.2, secondId: 'c2', secondPct: 48.5,
           hasAbsoluteMajority: false, nbCandidates: 2);
       expect(s.gap, lessThan(5.0));
-      expect(s.get isClose, isTrue);
+      expect(s.isClose, isTrue);
     });
 
     test('hasAbsoluteMajority si > 50%', () {

@@ -161,8 +161,7 @@ class _ProfilBody extends StatelessWidget {
               icon: Icons.place_outlined,
               label: 'Mon bureau de vote',
               value: 'Voir sur la carte',
-              onTap: () => Navigator.push(context, MaterialPageRoute(
-                builder: (_) => const BureauVoteScreen())),
+              onTap: () => context.go('/profil/bureau'),
             ),
           ],
         ),

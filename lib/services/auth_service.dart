@@ -109,7 +109,7 @@ class SupabaseAuthService {
     try {
       final ok = await _localAuth.authenticate(
         localizedReason: 'Confirmez votre identité pour voter',
-        options: const AuthenticationOptions(biometricOnly: false, stickyAuth: true),
+        
       );
       if (ok) { await _touch(); return BiometricResult.success; }
       return BiometricResult.failed;

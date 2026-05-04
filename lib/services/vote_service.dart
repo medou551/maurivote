@@ -12,7 +12,7 @@ class VoteService {
   // ─────────────────────────────────────────────────────────────────────────
   // SOUMETTRE UN VOTE
   // ─────────────────────────────────────────────────────────────────────────
-  Future<VoteResult> soumettrVote({
+  Future<VoteResult> soumettreVote({
     required String nni,
     required String electionId,
     required String candidateId,

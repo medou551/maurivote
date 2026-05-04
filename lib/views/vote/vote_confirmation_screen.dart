@@ -52,8 +52,8 @@ class _VoteConfirmationScreenState
       }
     });
 
-    final election = electionAsync.valueOrNull;
-    final candidates = candidatesAsync.valueOrNull ?? [];
+    final election = electionAsync.value;
+    final candidates = candidatesAsync.value ?? [];
     final candidate = candidates.firstWhere(
       (c) => c.id == widget.candidateId,
       orElse: () => candidates.isNotEmpty ? candidates.first : _dummyCandidate,

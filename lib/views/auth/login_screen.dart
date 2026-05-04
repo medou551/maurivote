@@ -1,12 +1,12 @@
+﻿import '../../viewmodels/auth_viewmodel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/validators.dart';
-import '../../viewmodels/auth_viewmodel.dart';
 
-/// Écran de connexion — Saisie du NNI mauritanien
+/// Ã‰cran de connexion â€” Saisie du NNI mauritanien
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -67,7 +67,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             children: [
               const SizedBox(height: 48),
 
-              // ── En-tête ─────────────────────────────────────────────────
+              // â”€â”€ En-tÃªte â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               Center(
                 child: Column(children: [
                   Container(
@@ -93,7 +93,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
               const SizedBox(height: 48),
 
-              // ── Formulaire NNI ───────────────────────────────────────────
+              // â”€â”€ Formulaire NNI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               const Text('Votre NNI',
                   style: TextStyle(
                       fontSize: 14, fontWeight: FontWeight.w600,
@@ -133,13 +133,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       onPressed: () =>
                           setState(() => _nniVisible = !_nniVisible),
                     ),
-                    counterText: '', // Masquer le compteur de caractères
+                    counterText: '', // Masquer le compteur de caractÃ¨res
                   ),
                 ),
               ),
               const SizedBox(height: 8),
 
-              // ── Info sécurité ────────────────────────────────────────────
+              // â”€â”€ Info sÃ©curitÃ© â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -162,7 +162,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
               const SizedBox(height: 32),
 
-              // ── Bouton de connexion ──────────────────────────────────────
+              // â”€â”€ Bouton de connexion â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               ElevatedButton(
                 onPressed: isLoading ? null : _submit,
                 child: isLoading
@@ -175,7 +175,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
               const SizedBox(height: 24),
 
-              // ── Lien CENI ────────────────────────────────────────────────
+              // â”€â”€ Lien CENI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               Center(
                 child: TextButton.icon(
                   onPressed: () {/* Ouvrir myceni.org */},
@@ -187,10 +187,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
               const SizedBox(height: 32),
 
-              // ── Pied de page ─────────────────────────────────────────────
+              // â”€â”€ Pied de page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               const Center(
                 child: Text(
-                  'Commission Électorale Nationale Indépendante\n'
+                  'Commission Ã‰lectorale Nationale IndÃ©pendante\n'
                   'République Islamique de Mauritanie',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),

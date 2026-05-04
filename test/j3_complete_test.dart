@@ -162,7 +162,7 @@ void main() {
         expect(h.length, 64);
       });
       test('déterministe avec mêmes paramètres', () {
-        const params = ('a' * 64, 'ENC', '2026-01-01T10:00:00Z');
+        final params = ('a' * 64, 'ENC', '2026-01-01T10:00:00Z');
         expect(
           CryptoUtils.generateRecuHash(voterHash: params.$1, voteChiffre: params.$2, timestamp: params.$3),
           equals(CryptoUtils.generateRecuHash(voterHash: params.$1, voteChiffre: params.$2, timestamp: params.$3)),

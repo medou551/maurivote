@@ -1,6 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../models/models.dart';
 import '../../utils/app_theme.dart';
 import '../../viewmodels/elections_viewmodel.dart';
@@ -66,7 +67,7 @@ class _ResultatsBody extends ConsumerWidget {
     final realtimeAsync = ref.watch(realtimeResultatsProvider(election.id));
 
     // Utiliser les temps réel si disponibles, sinon statiques
-    final resultats = realtimeAsync.valueOrNull ?? staticAsync.valueOrNull ?? [];
+    final resultats = realtimeAsync.value ?? staticAsync.value ?? [];
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -171,7 +172,7 @@ class _PieChartSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final candidatesAsync = ref.watch(candidatesProvider(
       CandidateQuery(electionId: electionId)));
-    final candidates = candidatesAsync.valueOrNull ?? [];
+    final candidates = candidatesAsync.value ?? [];
 
     final total = resultats.fold<int>(0, (s, r) => s + r.nbVotes);
 
@@ -228,7 +229,7 @@ class _ResultatBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final candidatesAsync = ref.watch(candidatesProvider(
       CandidateQuery(electionId: electionId)));
-    final candidate = candidatesAsync.valueOrNull?.firstWhere(
+    final candidate = candidatesAsync.value?.firstWhere(
       (c) => c.id == resultat.candidateId,
       orElse: () => Candidate(id: '', electionId: '', numeroCandidat: 0,
           nom: 'Candidat ${resultat.candidateId.substring(0, 6)}',
@@ -340,8 +341,7 @@ class _AllResultatsScreen extends ConsumerWidget {
               subtitle: Text(relevant[i].typeLabel),
               leading: const Icon(Icons.bar_chart, color: AppTheme.primaryGreen),
               trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.push(context, MaterialPageRoute(
-                builder: (_) => ResultatsScreen(electionId: relevant[i].id))),
+              onTap: () => context.push('/resultats/${relevant[i].id}'),
             ),
           );
         },

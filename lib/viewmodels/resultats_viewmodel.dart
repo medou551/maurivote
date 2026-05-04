@@ -4,20 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/models.dart';
 import '../services/election_service.dart';
 import '../services/realtime_service.dart';
+import 'elections_viewmodel.dart';
 
 // ── Providers ─────────────────────────────────────────────────────────────────
 
 final resultatsViewModelProvider =
-    StateNotifierProvider.family<ResultatsNotifier, ResultatsState, String>(
-  (ref, electionId) {
-    final notifier = ResultatsNotifier(
-      electionId: electionId,
-      electionService: ref.read(electionServiceProvider),
-      realtimeService: ref.read(realtimeServiceProvider),
-    );
-    ref.onDispose(() => notifier.dispose());
-    return notifier;
-  },
+    NotifierProvider.family<ResultatsNotifier, ResultatsState, String>(
+  (arg) => ResultatsNotifier(arg),
 );
 
 /// Statistiques de participation calculées à la volée
@@ -27,17 +20,18 @@ final participationStatsProvider =
   final totalVotes = resultats.fold<int>(0, (s, r) => s + r.nbVotes);
   final leader = resultats.reduce((a, b) => a.nbVotes > b.nbVotes ? a : b);
   final secondPlace = resultats.length > 1
-      ? resultats.where((r) => r.candidateId != leader.candidateId)
-            .reduce((a, b) => a.nbVotes > b.nbVotes ? a : b)
+      ? resultats
+          .where((r) => r.candidateId != leader.candidateId)
+          .reduce((a, b) => a.nbVotes > b.nbVotes ? a : b)
       : null;
   return ParticipationStats(
-    totalVotes: totalVotes,
-    leaderId: leader.candidateId,
-    leaderPct: leader.pourcentage,
-    secondId: secondPlace?.candidateId,
-    secondPct: secondPlace?.pourcentage ?? 0,
+    totalVotes:          totalVotes,
+    leaderId:            leader.candidateId,
+    leaderPct:           leader.pourcentage,
+    secondId:            secondPlace?.candidateId,
+    secondPct:           secondPlace?.pourcentage ?? 0,
     hasAbsoluteMajority: leader.pourcentage > 50,
-    nbCandidates: resultats.length,
+    nbCandidates:        resultats.length,
   );
 });
 
@@ -50,7 +44,7 @@ class ResultatsState {
   final String?         errorMessage;
   final bool            isRealtime;
   final DateTime?       lastUpdated;
-  final int             updateCount;   // Nb de mises à jour reçues
+  final int             updateCount;
 
   const ResultatsState({
     required this.status,
@@ -84,30 +78,34 @@ class ResultatsState {
 }
 
 // ── Notifier ──────────────────────────────────────────────────────────────────
-class ResultatsNotifier extends StateNotifier<ResultatsState> {
-  final String           electionId;
-  final ElectionService  electionService;
-  final RealtimeService  realtimeService;
+class ResultatsNotifier extends Notifier<ResultatsState> {
+  final String _electionId;
+  late RealtimeService _realtimeService;
   StreamSubscription<List<Resultat>>? _sub;
 
-  ResultatsNotifier({
-    required this.electionId,
-    required this.electionService,
-    required this.realtimeService,
-  }) : super(ResultatsState.initial()) {
-    _init();
+  ResultatsNotifier(this._electionId);
+
+  @override
+  ResultatsState build() {
+    _realtimeService = RealtimeService();
+    final electionService = ref.read(electionServiceProvider);
+
+    ref.onDispose(() {
+      _sub?.cancel();
+      _realtimeService.unsubscribe();
+    });
+
+    Future.microtask(() async {
+      await _fetchSnapshot(electionService);
+      _subscribeRealtime();
+    });
+
+    return ResultatsState.initial();
   }
 
-  Future<void> _init() async {
-    // 1. Chargement initial depuis la BDD (snapshot)
-    await _fetchSnapshot();
-    // 2. Abonnement WebSocket temps réel
-    _subscribeRealtime();
-  }
-
-  Future<void> _fetchSnapshot() async {
+  Future<void> _fetchSnapshot(ElectionService electionService) async {
     try {
-      final data = await electionService.getResultats(electionId: electionId);
+      final data = await electionService.getResultats(electionId: _electionId);
       state = state.copyWith(
         status:      ResultatsStatus.snapshot,
         resultats:   data,
@@ -123,8 +121,8 @@ class ResultatsNotifier extends StateNotifier<ResultatsState> {
   }
 
   void _subscribeRealtime() {
-    realtimeService.subscribeToResultats(electionId);
-    _sub = realtimeService.resultatsStream.listen(
+    _realtimeService.subscribeToResultats(_electionId);
+    _sub = _realtimeService.resultatsStream.listen(
       (resultats) {
         state = state.copyWith(
           status:      ResultatsStatus.live,
@@ -138,30 +136,22 @@ class ResultatsNotifier extends StateNotifier<ResultatsState> {
       },
       onError: (e) {
         debugPrint('Realtime error: $e');
-        // Garder les données existantes, signaler la perte du temps réel
         state = state.copyWith(isRealtime: false);
       },
     );
   }
 
-  /// Rafraîchissement manuel
   Future<void> refresh() async {
     state = state.copyWith(status: ResultatsStatus.loading);
-    await _fetchSnapshot();
-  }
-
-  void dispose() {
-    _sub?.cancel();
-    realtimeService.unsubscribe();
-    super.dispose();
+    await _fetchSnapshot(ref.read(electionServiceProvider));
   }
 }
 
 // ── Statistiques de participation ─────────────────────────────────────────────
 class ParticipationStats {
-  final int    totalVotes;
-  final String leaderId;
-  final double leaderPct;
+  final int     totalVotes;
+  final String  leaderId;
+  final double  leaderPct;
   final String? secondId;
   final double  secondPct;
   final bool    hasAbsoluteMajority;
@@ -182,7 +172,6 @@ class ParticipationStats {
     secondPct: 0, hasAbsoluteMajority: false, nbCandidates: 0,
   );
 
-  /// Gap entre le 1er et le 2e (points de %)
-  double get gap => leaderPct - secondPct;
-  bool get get isClose => gap < 5.0;
+  double get gap     => leaderPct - secondPct;
+  bool   get isClose => gap < 5.0;
 }

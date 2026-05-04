@@ -1,13 +1,14 @@
+﻿import '../../viewmodels/auth_viewmodel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../models/models.dart';
 import '../../utils/app_theme.dart';
-import '../../viewmodels/auth_viewmodel.dart';
+
 import '../../viewmodels/elections_viewmodel.dart';
 import '../../widgets/election_card.dart';
-import '../../widgets/connectivity_banner.dart';
+
 
 /// Écran Accueil — Liste des élections avec filtres
 class HomeScreen extends ConsumerWidget {
@@ -17,27 +18,27 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final electionsAsync = ref.watch(electionsProvider);
     final filter = ref.watch(electionFilterProvider);
-    final voter  = ref.watch(currentVoterProvider).valueOrNull;
+    final voter  = ref.watch(currentVoterProvider).value;
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundWhite,
       body: SafeArea(
         child: Column(
           children: [
-            // ── Bannière mode offline ─────────────────────────────────────
-            const ConnectivityBanner(),
+            // â”€â”€ BanniÃ¨re mode offline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            
 
-            // ── En-tête ────────────────────────────────────────────────────
+            // â”€â”€ En-tÃªte â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             _Header(voterName: voter?.prenom ?? ''),
 
-            // ── Filtres ────────────────────────────────────────────────────
+            // â”€â”€ Filtres â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             _FilterBar(
               current: filter,
               onChanged: (f) =>
                   ref.read(electionFilterProvider.notifier).state = f,
             ),
 
-            // ── Liste des élections ────────────────────────────────────────
+            // â”€â”€ Liste des Ã©lections â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             Expanded(
               child: electionsAsync.when(
                 loading: () => _buildShimmer(),
@@ -138,7 +139,7 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-// ── Widget En-tête ────────────────────────────────────────────────────────────
+// â”€â”€ Widget En-tÃªte â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _Header extends StatelessWidget {
   final String voterName;
   const _Header({required this.voterName});
@@ -158,7 +159,7 @@ class _Header extends StatelessWidget {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(
-                voterName.isNotEmpty ? 'Bonjour, $voterName 👋' : 'MauriVote',
+                voterName.isNotEmpty ? 'Bonjour, $voterName \u{1F44B}' : 'MauriVote',
                 style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold,
                     color: Colors.white),
               ),
@@ -174,7 +175,7 @@ class _Header extends StatelessWidget {
   }
 }
 
-// ── Widget Filtres ────────────────────────────────────────────────────────────
+// â”€â”€ Widget Filtres â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _FilterBar extends StatelessWidget {
   final ElectionFilter current;
   final ValueChanged<ElectionFilter> onChanged;

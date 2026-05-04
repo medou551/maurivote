@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/app_theme.dart';
 import '../utils/constants.dart';
 import '../app.dart';
 
@@ -62,7 +63,7 @@ class LanguageSelector extends ConsumerWidget {
       onSelected: (code) async {
         final lang = LanguageService.fromCode(code);
         if (lang == null) return;
-        ref.read(localeProvider.notifier).state = lang.locale;
+        ref.read(localeProvider.notifier).setLocale(lang.locale);
         await LanguageService.saveLanguage(code);
       },
       tooltip: 'Changer de langue',
@@ -148,7 +149,7 @@ class LanguageSelectionPage extends ConsumerWidget {
                 final isSelected = lang.code == currentLocale.languageCode;
                 return GestureDetector(
                   onTap: () async {
-                    ref.read(localeProvider.notifier).state = lang.locale;
+                    ref.read(localeProvider.notifier).setLocale(lang.locale);
                     await LanguageService.saveLanguage(lang.code);
                     onSelected?.call();
                   },
@@ -212,5 +213,3 @@ class LanguageSelectionPage extends ConsumerWidget {
   }
 }
 
-// Import de AppTheme nécessaire
-import '../utils/app_theme.dart';

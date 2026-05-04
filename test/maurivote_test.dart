@@ -4,6 +4,7 @@
 // ══════════════════════════════════════════════════════════════════════════════
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:maurivote/models/models.dart';
 import 'package:maurivote/utils/crypto_utils.dart';
 import 'package:maurivote/utils/validators.dart';
 import 'package:maurivote/utils/constants.dart';
@@ -353,5 +354,3 @@ void main() {
   });
 }
 
-// Import nécessaire pour les tests de modèle
-import 'package:maurivote/models/models.dart';

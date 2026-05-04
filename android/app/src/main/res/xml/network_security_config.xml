@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Configuration de sécurité réseau — MauriVote
+    OWASP Mobile Top 10 — M3: Insecure Communication
+    Implémente le Certificate Pinning pour Supabase et Fabric Gateway
+-->
+<network-security-config>
+
+    <!-- ── Politique par défaut : HTTPS uniquement ── -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- ── Certificate Pinning — Supabase Backend ── -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">supabase.co</domain>
+        <pin-set expiration="2027-01-01">
+            <!-- SHA-256 du certificat Let's Encrypt R3 (root CA Supabase) -->
+            <!-- Générer avec : openssl s_client -connect host:443 | openssl x509 -pubkey -noout | openssl pkey -pubin -outform der | openssl dgst -sha256 -binary | base64 -->
+            <pin digest="SHA-256">jQJTbIh0grw0/1TkHSumWb+Fs0Ggogr621gT3PvPKG0=</pin>
+            <!-- Backup pin — Let's Encrypt E1 -->
+            <pin digest="SHA-256">J2/oqMTsdhFWW/n85tys6b4yDBtb6idZayIEBx7QTxA=</pin>
+        </pin-set>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+
+    <!-- ── Certificate Pinning — Fabric Gateway ── -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">fabric-gateway.maurivote.mr</domain>
+        <pin-set expiration="2027-01-01">
+            <!-- Remplacer par le vrai hash du certificat en production -->
+            <pin digest="SHA-256">PLACEHOLDER_FABRIC_CERT_HASH=</pin>
+        </pin-set>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+
+    <!-- ── Autoriser HTTP uniquement en debug local ── -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>
+    </domain-config>
+
+</network-security-config>

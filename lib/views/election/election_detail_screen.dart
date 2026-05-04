@@ -1,3 +1,4 @@
+﻿import '../../viewmodels/auth_viewmodel.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,7 +7,7 @@ import 'package:shimmer/shimmer.dart';
 import '../../models/models.dart';
 import '../../utils/app_theme.dart';
 import '../../viewmodels/elections_viewmodel.dart';
-import '../../viewmodels/auth_viewmodel.dart';
+
 import '../../services/vote_service.dart';
 
 class ElectionDetailScreen extends ConsumerWidget {
@@ -42,11 +43,11 @@ class _ElectionDetailBody extends ConsumerWidget {
     final candidatesAsync = ref.watch(candidatesProvider(
       CandidateQuery(electionId: election.id, tour: election.tourActuel),
     ));
-    final voter = ref.watch(currentVoterProvider).valueOrNull;
+    final voter = ref.watch(currentVoterProvider).value;
 
     return CustomScrollView(
       slivers: [
-        // ── AppBar avec dégradé ─────────────────────────────────────────────
+        // â”€â”€ AppBar avec dÃ©gradÃ© â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         SliverAppBar(
           expandedHeight: 180,
           pinned: true,
@@ -81,7 +82,7 @@ class _ElectionDetailBody extends ConsumerWidget {
           ),
         ),
 
-        // ── Informations de l'élection ─────────────────────────────────────
+        // â”€â”€ Informations de l'Ã©lection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -89,7 +90,7 @@ class _ElectionDetailBody extends ConsumerWidget {
           ),
         ),
 
-        // ── Bouton Voter ───────────────────────────────────────────────────
+        // â”€â”€ Bouton Voter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if (election.isVotable && voter != null)
           SliverToBoxAdapter(
             child: Padding(
@@ -98,7 +99,7 @@ class _ElectionDetailBody extends ConsumerWidget {
             ),
           ),
 
-        // ── Titre liste candidats ──────────────────────────────────────────
+        // â”€â”€ Titre liste candidats â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
@@ -113,7 +114,7 @@ class _ElectionDetailBody extends ConsumerWidget {
           ),
         ),
 
-        // ── Liste des candidats ────────────────────────────────────────────
+        // â”€â”€ Liste des candidats â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         candidatesAsync.when(
           loading: () => SliverList(
             delegate: SliverChildBuilderDelegate(
@@ -137,7 +138,7 @@ class _ElectionDetailBody extends ConsumerWidget {
   }
 }
 
-// ── Carte infos élection ──────────────────────────────────────────────────────
+// â”€â”€ Carte infos Ã©lection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _InfoCard extends StatelessWidget {
   final Election election;
   const _InfoCard({required this.election});
@@ -187,7 +188,7 @@ class _InfoRow extends StatelessWidget {
   );
 }
 
-// ── Bouton Voter ──────────────────────────────────────────────────────────────
+// â”€â”€ Bouton Voter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _VoteButton extends StatelessWidget {
   final Election election;
   final Voter voter;
@@ -208,7 +209,7 @@ class _VoteButton extends StatelessWidget {
   }
 }
 
-// ── Card candidat ──────────────────────────────────────────────────────────────
+// â”€â”€ Card candidat â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _CandidateCard extends StatelessWidget {
   final Candidate candidate;
   const _CandidateCard({required this.candidate});
@@ -303,11 +304,11 @@ class _TypePill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final label = switch (type) {
-      ElectionType.presidentielle => '🏛 Présidentielle',
-      ElectionType.legislative    => '⚖ Législative',
-      ElectionType.municipale     => '🏘 Municipale',
-      ElectionType.regionale      => '🗺 Régionale',
-      ElectionType.referendum     => '📜 Référendum',
+      ElectionType.presidentielle => '\u{1F3DB} Présidentielle',
+      ElectionType.legislative    => '\u{2696} Législative',
+      ElectionType.municipale     => '\u{1F3D8} Municipale',
+      ElectionType.regionale      => '\u{1F5FA} Régionale',
+      ElectionType.referendum     => '\u{1F4DC} Référendum',
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
