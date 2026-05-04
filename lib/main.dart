@@ -12,10 +12,12 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: '.env');
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  await Supabase.initialize(
-    url: dotenv.env['SUPABASE_URL']!,
-    anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
-  );
+  try {
+    await Supabase.initialize(
+      url: dotenv.env['SUPABASE_URL']!,
+      anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
+    );
+  } catch (_) {}
   await Hive.initFlutter();
   await Hive.openBox('elections_cache');
   await Hive.openBox('votes_pending');

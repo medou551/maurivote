@@ -3,6 +3,7 @@ import 'package:hive/hive.dart';
 import '../main.dart';
 import '../models/models.dart';
 import '../utils/constants.dart';
+import '../utils/dev_mock.dart';
 
 /// Service de récupération et gestion des élections
 class ElectionService {
@@ -14,6 +15,7 @@ class ElectionService {
 
   /// Récupère toutes les élections publiques (active + planifiées + terminées)
   Future<List<Election>> getElections({bool forceRefresh = false}) async {
+    if (isDevBypass) return List.of(mockElections);
     try {
       // Essai réseau
       final data = await supabase
@@ -42,6 +44,7 @@ class ElectionService {
 
   /// Élections actives uniquement (en_cours)
   Future<List<Election>> getActiveElections() async {
+    if (isDevBypass) return mockElections.where((e) => e.isActive).toList();
     try {
       final data = await supabase
           .from('elections')
@@ -61,6 +64,10 @@ class ElectionService {
 
   /// Détail d'une élection par ID
   Future<Election?> getElectionById(String id) async {
+    if (isDevBypass) {
+      try { return mockElections.firstWhere((e) => e.id == id); }
+      catch (_) { return null; }
+    }
     try {
       final data = await supabase
           .from('elections')
@@ -83,6 +90,11 @@ class ElectionService {
     required String electionId,
     int tour = 1,
   }) async {
+    if (isDevBypass) {
+      return mockCandidates
+          .where((c) => c.electionId == electionId && c.tour == tour)
+          .toList();
+    }
     try {
       final data = await supabase
           .from('candidates')

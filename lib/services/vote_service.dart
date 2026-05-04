@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../main.dart';
 import '../models/models.dart';
 import '../utils/crypto_utils.dart';
+import '../utils/dev_mock.dart';
 
 /// Service de vote électronique sécurisé
 /// Chiffre le vote côté client et le soumet via Edge Function Supabase
@@ -18,6 +19,11 @@ class VoteService {
     required String candidateId,
     required int tour,
   }) async {
+    if (isDevBypass) {
+      final fakeHash = 'dev-${electionId.hashCode.abs()}-${candidateId.hashCode.abs()}-${DateTime.now().millisecondsSinceEpoch}';
+      debugPrint('DEV MODE: Vote simule pour $candidateId');
+      return VoteResult.success(recuHash: fakeHash);
+    }
     try {
       final session = supabase.auth.currentSession;
       if (session == null || session.isExpired) {
@@ -115,6 +121,7 @@ class VoteService {
     required String electionId,
     required int tour,
   }) async {
+    if (isDevBypass) return false;
     try {
       final selServeur = dotenv.env['VOTE_ENCRYPTION_SEL'] ?? '';
       final voterHash = CryptoUtils.hashVoter(

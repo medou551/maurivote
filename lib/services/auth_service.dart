@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../main.dart';
 import '../models/models.dart';
 import '../utils/constants.dart';
+import '../utils/dev_mock.dart';
 
 /// SupabaseAuthService — Singleton complet J3
 /// NNI → RAVEL → OTP SMS Twilio +222 → JWT → Biométrie → Session timeout
@@ -41,6 +42,11 @@ class SupabaseAuthService {
 
   // ── ÉTAPE 1 : Envoi OTP ──────────────────────────────────────────────────
   Future<OtpSendResult> sendOtp(String nni) async {
+    if (isDevBypass) {
+      await _storage.write(key: _kPendingNni, value: nni.trim());
+      await _storage.write(key: _kPendingPhone, value: mockVoter.telephone);
+      return OtpSendResult.success;
+    }
     if (await _isBlocked()) return OtpSendResult.rateLimited;
     try {
       final resp = await supabase
@@ -73,6 +79,10 @@ class SupabaseAuthService {
 
   // ── ÉTAPE 2 : Vérification OTP ───────────────────────────────────────────
   Future<OtpVerifyResult> verifyOtp(String code) async {
+    if (isDevBypass) {
+      devSessionActive = true;
+      return OtpVerifyResult.success;
+    }
     final phone = await _storage.read(key: _kPendingPhone);
     if (phone == null) return OtpVerifyResult.sessionExpired;
 
@@ -118,6 +128,7 @@ class SupabaseAuthService {
 
   // ── Session ───────────────────────────────────────────────────────────────
   bool get isLoggedIn {
+    if (isDevBypass) return devSessionActive;
     final s = supabase.auth.currentSession;
     return s != null && !s.isExpired;
   }
@@ -153,6 +164,7 @@ class SupabaseAuthService {
 
   // ── Profil ────────────────────────────────────────────────────────────────
   Future<Voter?> getCurrentVoter() async {
+    if (isDevBypass) return mockVoter;
     try {
       final nni = await _storage.read(key: _kPendingNni);
       if (nni == null) return null;

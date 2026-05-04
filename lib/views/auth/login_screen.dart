@@ -1,4 +1,5 @@
 ﻿import '../../viewmodels/auth_viewmodel.dart';
+import '../../utils/dev_mock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -174,6 +175,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     : const Text('Recevoir le code SMS'),
               ),
               const SizedBox(height: 24),
+
+              if (isDevBypass) ...[
+                OutlinedButton.icon(
+                  onPressed: () {
+                    devSessionActive = true;
+                    context.go('/home');
+                  },
+                  icon: const Icon(Icons.developer_mode, size: 16),
+                  label: const Text('Mode Test (Dev)'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.orange,
+                    side: const BorderSide(color: Colors.orange),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
 
               // â”€â”€ Lien CENI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               Center(

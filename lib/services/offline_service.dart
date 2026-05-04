@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import '../models/models.dart';
 import '../utils/constants.dart';
 import 'vote_service.dart';
 
@@ -60,7 +59,7 @@ class OfflineService {
         .where((e) => e.value['synced'] == false)
         .toList();
 
-    if (pending.isEmpty) return SyncResult(synced: 0, failed: 0);
+    if (pending.isEmpty) return const SyncResult(synced: 0, failed: 0);
 
     int synced = 0;
     int failed = 0;
@@ -68,7 +67,7 @@ class OfflineService {
     for (final entry in pending) {
       final data = Map<String, dynamic>.from(entry.value);
       try {
-        final result = await _voteService.soumettrVote(
+        final result = await _voteService.soumettreVote(
           nni:         data['nni'],
           electionId:  data['election_id'],
           candidateId: data['candidate_id'],

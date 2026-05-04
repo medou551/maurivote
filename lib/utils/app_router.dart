@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dev_mock.dart';
 import '../views/auth/splash_screen.dart';
 import '../views/auth/onboarding_screen.dart';
 import '../views/auth/login_screen.dart';
@@ -32,8 +33,13 @@ final appRouterProvider = Provider<GoRouter>((ref) => GoRouter(
   initialLocation: AppRoutes.splash,
   debugLogDiagnostics: true,
   redirect: (_, state) {
-    final session = Supabase.instance.client.auth.currentSession;
-    final loggedIn = session != null && !session.isExpired;
+    bool loggedIn;
+    if (isDevBypass) {
+      loggedIn = devSessionActive;
+    } else {
+      final s = Supabase.instance.client.auth.currentSession;
+      loggedIn = s != null && !s.isExpired;
+    }
     final authRoutes = [AppRoutes.splash, AppRoutes.onboarding,
         AppRoutes.login, AppRoutes.otp, AppRoutes.biometric];
     final onAuth = authRoutes.contains(state.matchedLocation);
@@ -67,6 +73,7 @@ final appRouterProvider = Provider<GoRouter>((ref) => GoRouter(
     GoRoute(path: AppRoutes.bureauVote, builder: (_, __) => const BureauVoteScreen()),
     GoRoute(path: AppRoutes.admin,
         redirect: (_, __) {
+          if (isDevBypass) return AppRoutes.home;
           final u = Supabase.instance.client.auth.currentUser;
           return u?.appMetadata['role'] == 'ceni_admin' ? null : AppRoutes.home;
         },
