@@ -6,6 +6,7 @@ import 'dev_mock.dart';
 import '../views/auth/splash_screen.dart';
 import '../views/auth/onboarding_screen.dart';
 import '../views/auth/login_screen.dart';
+import '../views/auth/register_screen.dart';
 import '../views/auth/otp_screen.dart';
 import '../views/auth/biometric_screen.dart';
 import '../views/home/home_screen.dart';
@@ -50,7 +51,8 @@ final appRouterProvider = Provider<GoRouter>((ref) => GoRouter(
   routes: [
     GoRoute(path: AppRoutes.splash,     builder: (_, __) => const SplashScreen()),
     GoRoute(path: AppRoutes.onboarding, builder: (_, __) => const OnboardingScreen()),
-    GoRoute(path: AppRoutes.login,      builder: (_, __) => const LoginScreen()),
+    GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
+      GoRoute(path: AppRoutes.login,      builder: (_, __) => const LoginScreen()),
     GoRoute(path: AppRoutes.otp,        builder: (_, s) => OtpScreen(phone: s.extra as String? ?? '')),
     GoRoute(path: AppRoutes.biometric,  builder: (_, __) => const BiometricScreen()),
     ShellRoute(

@@ -1,56 +1,47 @@
-﻿import '../../viewmodels/auth_viewmodel.dart';
-import '../../utils/dev_mock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../utils/app_theme.dart';
-import '../../utils/validators.dart';
+import '../../viewmodels/auth_viewmodel.dart';
 
-/// Ã‰cran de connexion â€” Saisie du NNI mauritanien
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
-
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _formKey   = GlobalKey<FormState>();
-  final _nniCtrl   = TextEditingController();
-  bool _nniVisible = false;   // Afficher/masquer le NNI
+  final _formKey  = GlobalKey<FormState>();
+  final _nniCtrl  = TextEditingController();
+  bool _nniVisible = false;
 
   @override
-  void dispose() {
-    _nniCtrl.dispose();
-    super.dispose();
-  }
+  void dispose() { _nniCtrl.dispose(); super.dispose(); }
 
-  Future<void> _submit() async {
+  Future<void> _sendOtp() async {
     if (!_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
-
     await ref.read(authStateProvider.notifier).sendOtp(_nniCtrl.text.trim());
-
     if (!mounted) return;
     final state = ref.read(authStateProvider);
-
     if (state.status == AuthStatus.otpSent) {
       context.push('/otp', extra: _nniCtrl.text.trim());
     } else if (state.status == AuthStatus.error) {
-      _showError(state.errorMessage ?? 'Erreur inconnue');
-    }
-  }
-
-  void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(state.errorMessage ?? 'Erreur'),
         backgroundColor: AppTheme.errorRed,
         behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 5),
-      ),
-    );
+      ));
+      ref.read(authStateProvider.notifier).clearError();
+    } else if (state.status == AuthStatus.blocked) {
+      final min = state.blockRemaining?.inMinutes ?? 30;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Compte bloque. Reessayez dans $min minutes.'),
+        backgroundColor: Colors.orange,
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
   }
 
   @override
@@ -62,159 +53,101 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       backgroundColor: AppTheme.backgroundWhite,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 48),
-
-              // â”€â”€ En-tÃªte â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-              Center(
-                child: Column(children: [
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: const BoxDecoration(
-                      color: AppTheme.primaryGreen,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.how_to_vote,
-                        size: 44, color: Colors.white),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text('MauriVote',
-                      style: TextStyle(
-                        fontSize: 28, fontWeight: FontWeight.bold,
-                        color: AppTheme.primaryGreen, fontFamily: 'Cairo',
-                      )),
-                  const SizedBox(height: 4),
-                  const Text('Connexion sécurisée',
-                      style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
-                ]),
+          padding: const EdgeInsets.symmetric(horizontal: 28),
+          child: Column(children: [
+            const SizedBox(height: 48),
+            Container(
+              width: 100, height: 100,
+              decoration: BoxDecoration(
+                color: AppTheme.primaryGreen,
+                shape: BoxShape.circle,
+                boxShadow: [BoxShadow(
+                  color: AppTheme.primaryGreen.withOpacity(0.3),
+                  blurRadius: 20, offset: const Offset(0, 8))],
               ),
-              const SizedBox(height: 48),
-
-              // â”€â”€ Formulaire NNI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-              const Text('Votre NNI',
-                  style: TextStyle(
-                      fontSize: 14, fontWeight: FontWeight.w600,
-                      color: AppTheme.textPrimary)),
+              child: const Icon(Icons.how_to_vote_rounded,
+                  size: 52, color: Colors.white),
+            ),
+            const SizedBox(height: 20),
+            const Text('MauriVote',
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold,
+                    color: AppTheme.primaryGreen)),
+            const Text('Connexion securisee',
+                style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
+            const SizedBox(height: 40),
+            Form(key: _formKey, child: Column(children: [
+              Align(alignment: Alignment.centerLeft,
+                child: Text('Votre NNI',
+                    style: TextStyle(fontWeight: FontWeight.bold,
+                        fontSize: 13, color: Colors.grey.shade700))),
               const SizedBox(height: 6),
-              const Text(
-                'Numéro National d\'Identification (10 chiffres)',
-                style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
-              ),
-              const SizedBox(height: 12),
-
-              Form(
-                key: _formKey,
-                child: TextFormField(
-                  controller: _nniCtrl,
-                  obscureText: !_nniVisible,
-                  keyboardType: TextInputType.number,
-                  maxLength: 10,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  textInputAction: TextInputAction.done,
-                  onFieldSubmitted: (_) => _submit(),
-                  validator: AppValidators.validateNni,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    letterSpacing: 6,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: '••••••••••',
-                    hintStyle: const TextStyle(letterSpacing: 6, fontSize: 20),
-                    prefixIcon: const Icon(Icons.badge_outlined,
-                        color: AppTheme.primaryGreen),
-                    suffixIcon: IconButton(
-                      icon: Icon(_nniVisible
-                          ? Icons.visibility_off : Icons.visibility,
-                          color: AppTheme.textSecondary),
-                      onPressed: () =>
-                          setState(() => _nniVisible = !_nniVisible),
-                    ),
-                    counterText: '', // Masquer le compteur de caractÃ¨res
+              TextFormField(
+                controller: _nniCtrl,
+                keyboardType: TextInputType.number,
+                maxLength: 10,
+                obscureText: !_nniVisible,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: InputDecoration(
+                  hintText: 'Numero National d\'Identification (10 chiffres)',
+                  prefixIcon: const Icon(Icons.badge_outlined),
+                  counterText: '',
+                  suffixIcon: IconButton(
+                    icon: Icon(_nniVisible
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined),
+                    onPressed: () =>
+                        setState(() => _nniVisible = !_nniVisible),
                   ),
                 ),
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'NNI requis';
+                  if (v.length != 10) return 'NNI doit contenir 10 chiffres';
+                  return null;
+                },
               ),
-              const SizedBox(height: 8),
-
-              // â”€â”€ Info sÃ©curitÃ© â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: AppTheme.lightGreen.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppTheme.lightGreen),
                 ),
                 child: const Row(children: [
-                  Icon(Icons.shield_outlined,
-                      size: 16, color: AppTheme.primaryGreen),
+                  Icon(Icons.security_outlined,
+                      color: AppTheme.primaryGreen, size: 18),
                   SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Un code SMS de vérification sera envoyé '
-                      'au numéro enregistré à votre NNI',
-                      style: TextStyle(fontSize: 12, color: AppTheme.primaryGreen),
-                    ),
-                  ),
+                  Expanded(child: Text(
+                    'Un code SMS sera envoye au numero enregistre',
+                    style: TextStyle(fontSize: 12,
+                        color: AppTheme.primaryGreen),
+                  )),
                 ]),
               ),
-              const SizedBox(height: 32),
-
-              // â”€â”€ Bouton de connexion â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-              ElevatedButton(
-                onPressed: isLoading ? null : _submit,
-                child: isLoading
-                    ? const SizedBox(
-                        height: 20, width: 20,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Text('Recevoir le code SMS'),
-              ),
               const SizedBox(height: 24),
-
-              if (isDevBypass) ...[
-                OutlinedButton.icon(
-                  onPressed: () {
-                    devSessionActive = true;
-                    context.go('/home');
-                  },
-                  icon: const Icon(Icons.developer_mode, size: 16),
-                  label: const Text('Mode Test (Dev)'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.orange,
-                    side: const BorderSide(color: Colors.orange),
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
-
-              // â”€â”€ Lien CENI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-              Center(
-                child: TextButton.icon(
-                  onPressed: () {/* Ouvrir myceni.org */},
-                  icon: const Icon(Icons.help_outline, size: 16),
-                  label: const Text('Besoin d\'aide ? Contactez la CENI'),
-                  style: TextButton.styleFrom(
-                      foregroundColor: AppTheme.textSecondary),
-                ),
+              ElevatedButton.icon(
+                onPressed: isLoading ? null : _sendOtp,
+                icon: isLoading
+                    ? const SizedBox(width: 20, height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2,
+                            color: Colors.white))
+                    : const Icon(Icons.sms_outlined),
+                label: Text(isLoading
+                    ? 'Envoi en cours...'
+                    : 'Recevoir le code SMS'),
               ),
-              const SizedBox(height: 32),
-
-              // â”€â”€ Pied de page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-              const Center(
-                child: Text(
-                  'Commission Ã‰lectorale Nationale IndÃ©pendante\n'
-                  'République Islamique de Mauritanie',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
-                ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () => context.push('/register'),
+                icon: const Icon(Icons.person_add_outlined),
+                label: const Text('Creer un compte'),
               ),
-            ],
-          ),
+            ])),
+            const SizedBox(height: 40),
+            const Text('MauriVote v1.0.0',
+                style: TextStyle(fontSize: 11,
+                    color: AppTheme.textSecondary)),
+            const SizedBox(height: 8),
+          ]),
         ),
       ),
     );
