@@ -152,7 +152,7 @@ k6 run --env SUPABASE_URL=$SUPABASE_URL k6_vote_load_test.js
 | S1 | J1–J7 | Fondations : Auth NNI + OTP + Infrastructure Supabase |
 | S2 | J8–J14 | Core : Vote chiffré + Profil + Carte bureau |
 | S3 | J15–J21 | Avancé : Résultats temps réel + Multilingue + Offline |
-| S4 | J22–J30 | Release : Tests UAT + APK signé + Soutenance |
+| S4 | J22–J30 | Release : Tests UAT + APK signé |
 
 ---
               
