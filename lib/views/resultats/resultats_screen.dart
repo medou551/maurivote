@@ -1,351 +1,363 @@
-import 'package:fl_chart/fl_chart.dart';
+﻿import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../models/models.dart';
+import '../../main.dart';
 import '../../utils/app_theme.dart';
-import '../../viewmodels/elections_viewmodel.dart';
-import '../../services/realtime_service.dart';
 
-// ── Provider Realtime pour les résultats ───────────────────────────────────────
-final realtimeServiceProvider = Provider<RealtimeService>((_) => RealtimeService());
-
-final realtimeResultatsProvider =
-    StreamProvider.family<List<Resultat>, String>((ref, electionId) {
-  final svc = ref.watch(realtimeServiceProvider);
-  svc.subscribeToResultats(electionId);
-  ref.onDispose(() => svc.unsubscribe());
-  return svc.resultatsStream;
-});
-
-class ResultatsScreen extends ConsumerWidget {
+class ResultatsScreen extends ConsumerStatefulWidget {
   final String? electionId;
   const ResultatsScreen({super.key, this.electionId});
-
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Si pas d'élection sélectionnée → liste des élections terminées
-    if (electionId == null) return _AllResultatsScreen();
-
-    final electionAsync = ref.watch(electionDetailProvider(electionId!));
-    return Scaffold(
-      backgroundColor: AppTheme.backgroundWhite,
-      appBar: AppBar(
-        title: const Text('Résultats'),
-        backgroundColor: AppTheme.primaryGreen,
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(resultatsProvider(
-                ResultatQuery(electionId: electionId!))),
-          ),
-        ],
-      ),
-      body: electionAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Erreur: $e')),
-        data: (e) => e == null
-            ? const Center(child: Text('Élection introuvable'))
-            : _ResultatsBody(election: e),
-      ),
-    );
-  }
+  ConsumerState<ResultatsScreen> createState() => _ResultatsScreenState();
 }
 
-// ── Corps des résultats ────────────────────────────────────────────────────────
-class _ResultatsBody extends ConsumerWidget {
-  final Election election;
-  const _ResultatsBody({required this.election});
+class _ResultatsScreenState extends ConsumerState<ResultatsScreen> {
+  Map<String, dynamic>? _election;
+  List<Map<String, dynamic>> _candidats = [];
+  bool _loading = true;
+  int _touchedIndex = -1;
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Résultats statiques (snapshot BDD)
-    final staticAsync = ref.watch(resultatsProvider(
-      ResultatQuery(electionId: election.id, tour: election.tourActuel)));
-    // Résultats temps réel (WebSocket)
-    final realtimeAsync = ref.watch(realtimeResultatsProvider(election.id));
-
-    // Utiliser les temps réel si disponibles, sinon statiques
-    final resultats = realtimeAsync.value ?? staticAsync.value ?? [];
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-
-        // ── Bandeau temps réel ─────────────────────────────────────────────
-        _RealtimeBadge(isLive: election.isActive),
-        const SizedBox(height: 16),
-
-        // ── En-tête élection ──────────────────────────────────────────────
-        Text(election.titreFr,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        Text('Tour ${election.tourActuel}',
-            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
-        const SizedBox(height: 20),
-
-        if (resultats.isEmpty)
-          _EmptyResultats(election: election)
-        else ...[
-          // ── Graphique circulaire ─────────────────────────────────────────
-          _PieChartSection(resultats: resultats, electionId: election.id),
-          const SizedBox(height: 24),
-
-          // ── Barres de progression ─────────────────────────────────────────
-          const Text('Résultats détaillés',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-          ...resultats.map((r) => _ResultatBar(resultat: r, electionId: election.id)),
-        ],
-      ]),
-    );
-  }
-}
-
-// ── Badge Temps Réel ──────────────────────────────────────────────────────────
-class _RealtimeBadge extends StatelessWidget {
-  final bool isLive;
-  const _RealtimeBadge({required this.isLive});
-
-  @override
-  Widget build(BuildContext context) {
-    if (!isLive) return const SizedBox.shrink();
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.red.shade50, borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.red.shade200),
-      ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        _PulsingDot(),
-        const SizedBox(width: 6),
-        const Text('Mise à jour en direct',
-            style: TextStyle(fontSize: 12, color: Colors.red, fontWeight: FontWeight.bold)),
-      ]),
-    );
-  }
-}
-
-class _PulsingDot extends StatefulWidget {
-  @override
-  State<_PulsingDot> createState() => _PulsingDotState();
-}
-
-class _PulsingDotState extends State<_PulsingDot> with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
+  final List<Color> _colors = [
+    const Color(0xFF1B5E20),
+    const Color(0xFF1565C0),
+    const Color(0xFF6A1B9A),
+    const Color(0xFFE65100),
+    const Color(0xFF00695C),
+    const Color(0xFFB71C1C),
+    const Color(0xFF37474F),
+  ];
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(seconds: 1))
-      ..repeat(reverse: true);
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    try {
+      final electionId = widget.electionId;
+      Map<String, dynamic> election;
+      if (electionId != null) {
+        final data = await supabase
+            .from('elections')
+            .select('*')
+            .eq('id', electionId)
+            .single();
+        election = Map<String, dynamic>.from(data);
+      } else {
+        final data = await supabase
+            .from('elections')
+            .select('*')
+            .order('created_at', ascending: false)
+            .limit(1)
+            .single();
+        election = Map<String, dynamic>.from(data);
+      }
+      final candidatsData = await supabase
+          .from('candidates')
+          .select('*')
+          .eq('election_id', election['id'])
+          .eq('is_active', true)
+          .order('nb_voix', ascending: false);
+      if (mounted)
+        setState(() {
+          _election = election;
+          _candidats = List<Map<String, dynamic>>.from(candidatsData as List);
+          _loading = false;
+        });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  int get _totalVoix =>
+      _candidats.fold(0, (sum, c) => sum + (c['nb_voix'] as int? ?? 0));
+
+  double _pourcentage(Map<String, dynamic> c) {
+    final total = _totalVoix;
+    if (total == 0) return 0;
+    return (c['nb_voix'] as int? ?? 0) / total * 100;
   }
 
   @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
-
-  @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: _ctrl,
-    builder: (_, __) => Container(
-      width: 8, height: 8,
-      decoration: BoxDecoration(
-        color: Colors.red.withOpacity(0.4 + _ctrl.value * 0.6),
-        shape: BoxShape.circle,
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppTheme.backgroundWhite,
+      appBar: AppBar(
+        title: Text(_election?['titre_fr'] ?? 'Resultats',
+            style: const TextStyle(fontSize: 16)),
+        backgroundColor: AppTheme.primaryGreen,
+        foregroundColor: Colors.white,
+        actions: [
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
+        ],
       ),
-    ),
-  );
-}
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _candidats.isEmpty
+              ? const Center(child: Text('Aucun resultat disponible'))
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(children: [
+                    _buildStats(),
+                    const SizedBox(height: 24),
+                    _buildPieChart(),
+                    const SizedBox(height: 24),
+                    _buildBarres(),
+                    const SizedBox(height: 24),
+                    _buildTableau(),
+                  ])),
+    );
+  }
 
-// ── Graphique camembert ────────────────────────────────────────────────────────
-class _PieChartSection extends ConsumerWidget {
-  final List<Resultat> resultats;
-  final String electionId;
-  const _PieChartSection({required this.resultats, required this.electionId});
+  Widget _buildStats() {
+    final total = _totalVoix;
+    final gagnant = _candidats.isNotEmpty
+        ? _candidats
+            .reduce((a, b) => (a['nb_voix'] ?? 0) > (b['nb_voix'] ?? 0) ? a : b)
+        : null;
+    return Row(children: [
+      Expanded(
+          child: _statCard('Total votes', _formatNombre(total),
+              Icons.how_to_vote, AppTheme.primaryGreen)),
+      const SizedBox(width: 12),
+      Expanded(
+          child: _statCard('Candidats', '${_candidats.length}', Icons.person,
+              const Color(0xFF1565C0))),
+      const SizedBox(width: 12),
+      Expanded(
+          child: _statCard(
+              'Vainqueur',
+              gagnant != null
+                  ? _pourcentage(gagnant).toStringAsFixed(1) + '%'
+                  : '-',
+              Icons.emoji_events,
+              const Color(0xFFFFB300))),
+    ]);
+  }
 
-  static const _colors = [
-    Color(0xFF1565C0), Color(0xFF1B5E20), Color(0xFFE65100),
-    Color(0xFF4A148C), Color(0xFF00695C), Color(0xFFBF360C),
-  ];
+  Widget _statCard(String label, String value, IconData icon, Color color) =>
+      Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+              color: color.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: color.withOpacity(0.2))),
+          child: Column(children: [
+            Icon(icon, color: color, size: 24),
+            const SizedBox(height: 6),
+            Text(value,
+                style: TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.bold, color: color)),
+            Text(label,
+                style: const TextStyle(
+                    fontSize: 10, color: AppTheme.textSecondary),
+                textAlign: TextAlign.center),
+          ]));
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final candidatesAsync = ref.watch(candidatesProvider(
-      CandidateQuery(electionId: electionId)));
-    final candidates = candidatesAsync.value ?? [];
-
-    final total = resultats.fold<int>(0, (s, r) => s + r.nbVotes);
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: AppTheme.electionCardDecoration(),
-      child: Column(children: [
-        const Text('Répartition des votes',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 200,
+  Widget _buildPieChart() {
+    return Column(children: [
+      const Text('Repartition des votes',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+      const SizedBox(height: 16),
+      SizedBox(
+          height: 220,
           child: PieChart(
             PieChartData(
-              sections: resultats.asMap().entries.map((e) {
-                final i = e.key;
-                final r = e.value;
+              pieTouchData: PieTouchData(touchCallback: (_, pieTouchResponse) {
+                setState(() {
+                  if (pieTouchResponse == null ||
+                      pieTouchResponse.touchedSection == null) {
+                    _touchedIndex = -1;
+                    return;
+                  }
+                  _touchedIndex =
+                      pieTouchResponse.touchedSection!.touchedSectionIndex;
+                });
+              }),
+              sectionsSpace: 2,
+              centerSpaceRadius: 50,
+              sections: List.generate(_candidats.length, (i) {
+                final isTouched = i == _touchedIndex;
+                final pct = _pourcentage(_candidats[i]);
+                final color = _colors[i % _colors.length];
                 return PieChartSectionData(
-                  value: r.pourcentage,
-                  color: _colors[i % _colors.length],
-                  title: '${r.pourcentage.toStringAsFixed(1)}%',
-                  radius: 80,
-                  titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold,
+                  color: color,
+                  value: pct,
+                  title: pct > 5 ? '${pct.toStringAsFixed(1)}%' : '',
+                  radius: isTouched ? 80 : 70,
+                  titleStyle: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
                       color: Colors.white),
                 );
-              }).toList(),
-              centerSpaceRadius: 40,
-              sectionsSpace: 2,
+              }),
             ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        // Total votes
-        Text('Total : ${_formatNumber(total)} voix exprimées',
-            style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
-      ]),
-    );
+          )),
+      const SizedBox(height: 12),
+      Wrap(
+          spacing: 16,
+          runSpacing: 8,
+          children: List.generate(_candidats.length, (i) {
+            final c = _candidats[i];
+            final color = _colors[i % _colors.length];
+            final nom = (c['nom'] ?? '').toString();
+            final nomCourt =
+                nom.length > 20 ? nom.substring(0, 20) + '...' : nom;
+            return Row(mainAxisSize: MainAxisSize.min, children: [
+              Container(
+                  width: 12,
+                  height: 12,
+                  decoration:
+                      BoxDecoration(color: color, shape: BoxShape.circle)),
+              const SizedBox(width: 4),
+              Text(nomCourt, style: const TextStyle(fontSize: 11)),
+            ]);
+          })),
+    ]);
   }
 
-  String _formatNumber(int n) {
-    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
-    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
-    return n.toString();
-  }
-}
-
-// ── Barre de résultat candidat ────────────────────────────────────────────────
-class _ResultatBar extends ConsumerWidget {
-  final Resultat resultat;
-  final String electionId;
-  const _ResultatBar({required this.resultat, required this.electionId});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final candidatesAsync = ref.watch(candidatesProvider(
-      CandidateQuery(electionId: electionId)));
-    final candidate = candidatesAsync.value?.firstWhere(
-      (c) => c.id == resultat.candidateId,
-      orElse: () => Candidate(id: '', electionId: '', numeroCandidat: 0,
-          nom: 'Candidat ${resultat.candidateId.substring(0, 6)}',
-          tour: 1, isActive: true),
-    );
-
-    final progress = resultat.pourcentage / 100;
-    final couleur = candidate?.couleurParti != null
-        ? Color(int.parse(candidate!.couleurParti!.replaceAll('#', '0xFF')))
-        : AppTheme.primaryGreen;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: AppTheme.electionCardDecoration(),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Container(
-            width: 30, height: 30,
-            decoration: BoxDecoration(color: couleur, shape: BoxShape.circle),
-            child: Center(child: Text(
-              candidate?.numeroCandidat.toString() ?? '?',
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-            )),
-          ),
-          const SizedBox(width: 10),
-          Expanded(child: Text(candidate?.nom ?? 'Inconnu',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14))),
-          Text('${resultat.pourcentage.toStringAsFixed(1)}%',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: couleur)),
-        ]),
-        const SizedBox(height: 10),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: progress),
-            duration: const Duration(milliseconds: 800),
-            curve: Curves.easeOutCubic,
-            builder: (_, v, __) => LinearProgressIndicator(
-              value: v,
-              backgroundColor: Colors.grey.shade100,
-              valueColor: AlwaysStoppedAnimation<Color>(couleur),
-              minHeight: 12,
+  Widget _buildBarres() {
+    return Column(children: [
+      const Text('Resultats par candidat',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+      const SizedBox(height: 16),
+      ...List.generate(_candidats.length, (i) {
+        final c = _candidats[i];
+        final pct = _pourcentage(c);
+        final color = _colors[i % _colors.length];
+        final nom = (c['nom'] ?? '').toString();
+        final isGagnant = i == 0 &&
+            _candidats.length > 1 &&
+            (c['nb_voix'] ?? 0) > (_candidats[1]['nb_voix'] ?? 0);
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Container(
+                  width: 28,
+                  height: 28,
+                  decoration:
+                      BoxDecoration(color: color, shape: BoxShape.circle),
+                  child: Center(
+                      child: Text('${c['numero_candidat'] ?? i + 1}',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold)))),
+              const SizedBox(width: 8),
+              Expanded(
+                  child: Text(nom,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w500, fontSize: 13),
+                      overflow: TextOverflow.ellipsis)),
+              if (isGagnant)
+                const Icon(Icons.emoji_events,
+                    color: Color(0xFFFFB300), size: 18),
+              const SizedBox(width: 8),
+              Text('${pct.toStringAsFixed(2)}%',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold, color: color, fontSize: 13)),
+            ]),
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: pct / 100,
+                minHeight: 12,
+                backgroundColor: Colors.grey.shade200,
+                valueColor: AlwaysStoppedAnimation<Color>(color),
+              ),
             ),
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text('${_fmt(resultat.nbVotes)} voix',
-            style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
-      ]),
-    );
+            Align(
+                alignment: Alignment.centerRight,
+                child: Text(_formatNombre(c['nb_voix'] as int? ?? 0),
+                    style: const TextStyle(
+                        fontSize: 11, color: AppTheme.textSecondary))),
+          ]),
+        );
+      }),
+    ]);
   }
 
-  String _fmt(int n) {
-    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
-    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
-    return n.toString();
-  }
-}
-
-// ── Résultats vides ───────────────────────────────────────────────────────────
-class _EmptyResultats extends StatelessWidget {
-  final Election election;
-  const _EmptyResultats({required this.election});
-
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(32),
-      child: Column(children: [
-        const Icon(Icons.bar_chart_outlined, size: 64, color: AppTheme.textSecondary),
-        const SizedBox(height: 16),
-        Text(
-          election.isActive
-              ? 'Les résultats seront disponibles à la fermeture des bureaux de vote'
-              : 'Résultats en cours de traitement par la CENI',
-          textAlign: TextAlign.center,
-          style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
-        ),
-      ]),
-    ),
-  );
-}
-
-// ── Liste toutes les élections ────────────────────────────────────────────────
-class _AllResultatsScreen extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final electionsAsync = ref.watch(electionsProvider);
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Résultats'),
-          backgroundColor: AppTheme.primaryGreen, foregroundColor: Colors.white),
-      body: electionsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Erreur: $e')),
-        data: (elections) {
-          final relevant = elections
-              .where((e) => e.statut == ElectionStatus.terminee || e.isActive)
-              .toList();
-          if (relevant.isEmpty) {
-            return const Center(child: Text('Aucun résultat disponible'));
-          }
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: relevant.length,
-            itemBuilder: (_, i) => ListTile(
-              title: Text(relevant[i].titreFr, style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text(relevant[i].typeLabel),
-              leading: const Icon(Icons.bar_chart, color: AppTheme.primaryGreen),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => context.push('/resultats/${relevant[i].id}'),
-            ),
-          );
+  Widget _buildTableau() {
+    return Column(children: [
+      const Text('Tableau des resultats',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+      const SizedBox(height: 12),
+      Table(
+        border: TableBorder.all(color: Colors.grey.shade300, width: 0.5),
+        columnWidths: const {
+          0: FlexColumnWidth(0.5),
+          1: FlexColumnWidth(3),
+          2: FlexColumnWidth(2),
+          3: FlexColumnWidth(1.5),
         },
+        children: [
+          TableRow(
+            decoration: BoxDecoration(color: AppTheme.primaryGreen),
+            children: ['N�', 'Candidat', 'Parti', '%']
+                .map((h) => Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Text(h,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12),
+                        textAlign: TextAlign.center)))
+                .toList(),
+          ),
+          ...List.generate(_candidats.length, (i) {
+            final c = _candidats[i];
+            final pct = _pourcentage(c);
+            final bgColor = i == 0 ? const Color(0xFFE8F5E9) : Colors.white;
+            return TableRow(
+              decoration: BoxDecoration(color: bgColor),
+              children: [
+                Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Text('${c['numero_candidat'] ?? i + 1}',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 12))),
+                Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Text(c['nom'] ?? '',
+                        style: const TextStyle(
+                            fontSize: 11, fontWeight: FontWeight.w500))),
+                Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Text(c['parti'] ?? '',
+                        style: const TextStyle(
+                            fontSize: 11, color: AppTheme.textSecondary))),
+                Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Text('${pct.toStringAsFixed(2)}%',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: _colors[i % _colors.length]))),
+              ],
+            );
+          }),
+        ],
       ),
-    );
+      const SizedBox(height: 8),
+      Text('Total: ${_formatNombre(_totalVoix)} voix � Taux: 55.39%',
+          style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+    ]);
+  }
+
+  String _formatNombre(int n) {
+    final s = n.toString();
+    final buffer = StringBuffer();
+    for (int i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) buffer.write(' ');
+      buffer.write(s[i]);
+    }
+    return buffer.toString();
   }
 }

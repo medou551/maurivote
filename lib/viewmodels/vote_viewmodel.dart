@@ -1,4 +1,4 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../models/models.dart';
 import '../services/vote_service.dart';
@@ -121,7 +121,6 @@ class VoteNotifier extends Notifier<VoteState> {
     );
 
     if (result.isSuccess) {
-      await _auth.recordActivity();
       state = state.copyWith(status: VoteStatus.success, recuHash: result.recuHash);
     } else {
       state = state.copyWith(
@@ -157,8 +156,8 @@ class HasVotedQuery {
   const HasVotedQuery({required this.electionId, this.tour = 1});
 
   @override
-  bool operator ==(Object o) =>
-      o is HasVotedQuery && o.electionId == electionId && o.tour == tour;
+  bool operator ==(Object other) =>
+      other is HasVotedQuery && other.electionId == electionId && other.tour == tour;
   @override
   int get hashCode => Object.hash(electionId, tour);
 }

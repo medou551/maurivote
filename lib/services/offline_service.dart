@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../utils/constants.dart';
@@ -127,3 +127,25 @@ class SyncResult {
   bool get hasFailures => failed > 0;
   int get total => synced + failed;
 }
+  // Precharger elections pour mode offline
+  Future<void> preloadElections(List<Map<String, dynamic>> elections) async {
+    final box = Hive.box(AppConstants.boxElections);
+    for (final e in elections) {
+      await box.put(e['id'], e);
+    }
+    debugPrint('OfflineService: \ elections mises en cache');
+  }
+
+  // Recuperer elections depuis cache
+  List<Map<String, dynamic>> getCachedElections() {
+    final box = Hive.box(AppConstants.boxElections);
+    return box.values
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
+  }
+
+  // Verifier connectivite
+  Future<bool> isOnline() async {
+    final result = await Connectivity().checkConnectivity();
+    return result != ConnectivityResult.none;
+  }

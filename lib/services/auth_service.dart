@@ -1,69 +1,39 @@
-import 'dart:async';
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../main.dart';
 import '../models/models.dart';
 import '../utils/constants.dart';
-import '../utils/dev_mock.dart';
 
-/// SupabaseAuthService — Singleton complet J3
-/// NNI → RAVEL → OTP SMS Twilio +222 → JWT → Biométrie → Session timeout
 class SupabaseAuthService {
-  SupabaseAuthService._internal();
-  static final SupabaseAuthService instance = SupabaseAuthService._internal();
-  factory SupabaseAuthService() => instance;
+  static final SupabaseAuthService instance = SupabaseAuthService._();
+  SupabaseAuthService._();
+
+  static const _storage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true));
+
+  static const _kPendingNni   = 'mv_pending_nni';
+  static const _kPendingPhone = 'mv_pending_phone';
+  static const _kLastActivity = 'mv_last_activity';
+  static const _kAttempts     = 'mv_attempts';
+  static const _kBlockedUntil = 'mv_blocked_until';
 
   final _localAuth = LocalAuthentication();
-  static const _storage = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
-    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
-  );
 
-  static const _kJwt           = 'mv_jwt';
-  static const _kRefreshToken  = 'mv_refresh';
-  static const _kPendingPhone  = 'mv_pending_phone';
-  static const _kPendingNni    = 'mv_pending_nni';
-  static const _kLastActivity  = 'mv_last_activity';
-  static const _kOtpAttempts   = 'mv_otp_attempts';
-  static const _kBlockedUntil  = 'mv_blocked_until';
-
-  Timer? _activityTimer;
-
-  // ── Sécurité appareil ────────────────────────────────────────────────────
-  Future<bool> isDeviceSecure() async {
-    try {
-      // En production : ajouter flutter_jailbreak_detection
-      return true;
-    } catch (_) { return true; }
-  }
-
-  // ── ÉTAPE 1 : Envoi OTP ──────────────────────────────────────────────────
+  // â”€â”€ OTP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<OtpSendResult> sendOtp(String nni) async {
-    if (isDevBypass) {
-      await _storage.write(key: _kPendingNni, value: nni.trim());
-      await _storage.write(key: _kPendingPhone, value: mockVoter.telephone);
-      return OtpSendResult.success;
-    }
-    if (await _isBlocked()) return OtpSendResult.rateLimited;
     try {
-      final resp = await supabase
-          .from('voters')
+      final resp = await supabase.from('voters')
           .select('telephone, is_active')
-          .eq('nni', nni.trim())
-          .maybeSingle();
-
+          .eq('nni', nni.trim()).maybeSingle();
       if (resp == null) return OtpSendResult.nniNotFound;
       if (resp['is_active'] == false) return OtpSendResult.accountSuspended;
-
       final phone = resp['telephone'] as String;
-      await supabase.auth.signInWithOtp(phone: phone, shouldCreateUser: false);
+      await supabase.auth.signInWithOtp(phone: phone, shouldCreateUser: true);
       await _storage.write(key: _kPendingPhone, value: phone);
       await _storage.write(key: _kPendingNni, value: nni.trim());
-      await _resetAttempts();
-      debugPrint('OTP → $phone');
+      debugPrint('OTP envoye');
       return OtpSendResult.success;
     } on AuthException catch (e) {
       if (e.message.toLowerCase().contains('rate')) return OtpSendResult.rateLimited;
@@ -77,15 +47,9 @@ class SupabaseAuthService {
     return sendOtp(nni);
   }
 
-  // ── ÉTAPE 2 : Vérification OTP ───────────────────────────────────────────
   Future<OtpVerifyResult> verifyOtp(String code) async {
-    if (isDevBypass) {
-      devSessionActive = true;
-      return OtpVerifyResult.success;
-    }
     final phone = await _storage.read(key: _kPendingPhone);
     if (phone == null) return OtpVerifyResult.sessionExpired;
-
     final attempts = await _incrementAttempts();
     if (attempts > AppConstants.otpMaxAttempts) {
       await _blockAccount();
@@ -93,13 +57,12 @@ class SupabaseAuthService {
     }
     try {
       final r = await supabase.auth.verifyOTP(
-          phone: phone, token: code.trim(), type: OtpType.sms);
+        phone: phone, token: code.trim(), type: OtpType.sms);
       if (r.session == null) return OtpVerifyResult.invalid;
-      await _storage.write(key: _kJwt, value: r.session!.accessToken);
-      await _storage.write(key: _kRefreshToken, value: r.session!.refreshToken ?? '');
-      await _touch();
       await _resetAttempts();
-      _startTimer();
+      await _touch();
+      await _storage.write(key: _kPendingNni,
+          value: await _storage.read(key: _kPendingNni) ?? '');
       return OtpVerifyResult.success;
     } on AuthException catch (e) {
       final m = e.message.toLowerCase();
@@ -108,29 +71,49 @@ class SupabaseAuthService {
     } catch (_) { return OtpVerifyResult.networkError; }
   }
 
-  // ── Biométrie ─────────────────────────────────────────────────────────────
-  Future<bool> isBiometricAvailable() async {
-    try {
-      return await _localAuth.canCheckBiometrics && await _localAuth.isDeviceSupported();
-    } catch (_) { return false; }
-  }
-
+  // â”€â”€ Biometrie â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<BiometricResult> authenticateBiometric() async {
     try {
+      final avail = await _localAuth.canCheckBiometrics;
+      if (!avail) return BiometricResult.notAvailable;
       final ok = await _localAuth.authenticate(
-        localizedReason: 'Confirmez votre identité pour voter',
-        
-      );
+        localizedReason: 'Confirmez votre identite pour voter');
       if (ok) { await _touch(); return BiometricResult.success; }
       return BiometricResult.failed;
     } catch (_) { return BiometricResult.error; }
   }
 
-  // ── Session ───────────────────────────────────────────────────────────────
+  // â”€â”€ NNI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  Future<void> saveNni(String nni) async {
+    await _storage.write(key: _kPendingNni, value: nni);
+  }
+
+  Future<String?> getCurrentNni() async {
+    return _storage.read(key: _kPendingNni);
+  }
+
+  // â”€â”€ Voter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  Future<Voter?> getCurrentVoter() async {
+    try {
+      final nni = await getCurrentNni();
+      if (nni == null || nni.isEmpty) return null;
+      final data = await supabase.from('voters')
+          .select('*').eq('nni', nni).maybeSingle();
+      if (data == null) return null;
+      return Voter.fromJson(Map<String, dynamic>.from(data));
+    } catch (_) { return null; }
+  }
+
+  // â”€â”€ Session â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bool get isLoggedIn {
-    if (isDevBypass) return devSessionActive;
     final s = supabase.auth.currentSession;
     return s != null && !s.isExpired;
+  }
+
+  Future<void> _touch() async {
+    await _storage.write(
+      key: _kLastActivity,
+      value: DateTime.now().toIso8601String());
   }
 
   Future<bool> isSessionTimedOut() async {
@@ -138,73 +121,28 @@ class SupabaseAuthService {
     if (raw == null) return true;
     final last = DateTime.tryParse(raw);
     if (last == null) return true;
-    return DateTime.now().difference(last).inMinutes >= AppConstants.sessionTimeoutMin;
+    return DateTime.now().difference(last).inMinutes >= AppConstants.sessionTimeoutMinutes;
   }
 
-  Future<void> recordActivity() => _touch();
-
-  Future<void> refreshSessionIfNeeded() async {
-    final s = supabase.auth.currentSession;
-    if (s == null) return;
-    final exp = DateTime.fromMillisecondsSinceEpoch((s.expiresAt ?? 0) * 1000, isUtc: true);
-    if (exp.difference(DateTime.now().toUtc()).inMinutes < 5) {
-      try { await supabase.auth.refreshSession(); } catch (_) {}
-    }
-  }
-
-  void _startTimer() {
-    _activityTimer?.cancel();
-    _activityTimer = Timer.periodic(const Duration(minutes: 1), (_) async {
-      if (await isSessionTimedOut()) { await signOut(); }
-    });
-  }
-
-  Future<void> _touch() async =>
-      _storage.write(key: _kLastActivity, value: DateTime.now().toIso8601String());
-
-  // ── Profil ────────────────────────────────────────────────────────────────
-  Future<Voter?> getCurrentVoter() async {
-    if (isDevBypass) return mockVoter;
-    try {
-      final nni = await _storage.read(key: _kPendingNni);
-      if (nni == null) return null;
-      final data = await supabase.from('voters').select().eq('nni', nni).single();
-      return Voter.fromJson(data);
-    } catch (_) { return null; }
-  }
-
-  Future<String?> getCurrentNni() => _storage.read(key: _kPendingNni);
-
-  // ── Déconnexion ───────────────────────────────────────────────────────────
   Future<void> signOut() async {
-    _activityTimer?.cancel();
-    try { await supabase.auth.signOut(); } catch (_) {}
     await _storage.deleteAll();
+    try { await supabase.auth.signOut(); } catch (_) {}
   }
 
-  // ── Blocage OTP ───────────────────────────────────────────────────────────
-  Future<bool> _isBlocked() async {
-    final raw = await _storage.read(key: _kBlockedUntil);
-    if (raw == null) return false;
-    final until = DateTime.tryParse(raw);
-    if (until == null || DateTime.now().isAfter(until)) {
-      await _storage.delete(key: _kBlockedUntil);
-      return false;
-    }
-    return true;
-  }
-
+  // â”€â”€ Rate limiting â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<int> _incrementAttempts() async {
-    final raw = await _storage.read(key: _kOtpAttempts);
+    final raw = await _storage.read(key: _kAttempts);
     final n = (int.tryParse(raw ?? '0') ?? 0) + 1;
-    await _storage.write(key: _kOtpAttempts, value: n.toString());
+    await _storage.write(key: _kAttempts, value: n.toString());
     return n;
   }
 
-  Future<void> _resetAttempts() => _storage.delete(key: _kOtpAttempts);
+  Future<void> _resetAttempts() async {
+    await _storage.delete(key: _kAttempts);
+  }
 
   Future<void> _blockAccount() async {
-    final until = DateTime.now().add(Duration(minutes: AppConstants.otpBlockDurationMin));
+    final until = DateTime.now().add(const Duration(minutes: 30));
     await _storage.write(key: _kBlockedUntil, value: until.toIso8601String());
   }
 

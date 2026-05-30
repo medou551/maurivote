@@ -12,13 +12,14 @@ INSERT INTO wilayas (code, nom_fr, nom_ar, chef_lieu) VALUES
   ('MR-06', 'Trarza',                'الترارزة',                 'Rosso'),
   ('MR-07', 'Adrar',                 'آدرار',                   'Atar'),
   ('MR-08', 'Dakhlet Nouadhibou',    'داخلت نواذيبو',           'Nouadhibou'),
-  ('MR-09', 'Tagant',                'تاكانت',                   'Tidjikja'),
+  ('MR-09', 'Tagant',                'تكانت',                   'Tidjikja'),
   ('MR-10', 'Guidimagha',            'كيدماغة',                  'Sélibaby'),
   ('MR-11', 'Tiris Zemmour',         'تيرس زمور',               'Zouérat'),
   ('MR-12', 'Inchiri',               'انشيري',                   'Akjoujt'),
-  ('MR-13', 'Nouakchott Nord',       'نواكشوط الشمالية',        'Nouakchott'),
-  ('MR-14', 'Nouakchott Ouest',      'نواكشوط الغربية',         'Nouakchott'),
-  ('MR-15', 'Nouakchott Sud',        'نواكشوط الجنوبية',        'Nouakchott');
+  ('MR-13', 'Nouakchott Nord',       'نواكشوط الشمالية',        'Nouakchott Nord'),
+  ('MR-14', 'Nouakchott Ouest',      'نواكشوط الغربية',         'Nouakchott ouest'),
+  ('MR-15', 'Nouakchott Sud',        'نواكشوط الجنوبية',        'Nouakchott Sud')
+ON CONFLICT (code) DO NOTHING;
 
 -- ── Communes test (Nouakchott uniquement pour les tests) ─────────────────────
 WITH w_nord AS (SELECT id FROM wilayas WHERE code = 'MR-13'),
@@ -33,7 +34,8 @@ INSERT INTO communes (code, nom_fr, nom_ar, wilaya_id) VALUES
   ('NKT-006', 'Riyad',          'الرياض',        (SELECT id FROM w_nord)),
   ('NKT-007', 'Teyarett',       'تيارت',         (SELECT id FROM w_nord)),
   ('NKT-008', 'Toujounine',     'توجنين',        (SELECT id FROM w_nord)),
-  ('NKT-009', 'Dar Naim',       'دار النعيم',    (SELECT id FROM w_nord));
+  ('NKT-009', 'Dar Naim',       'دار النعيم',    (SELECT id FROM w_nord))
+ON CONFLICT (code) DO NOTHING;
 
 -- ── Bureaux de vote test ──────────────────────────────────────────────────────
 WITH c_tevragh AS (SELECT id FROM communes WHERE code = 'NKT-001'),
@@ -55,7 +57,8 @@ INSERT INTO bureaux_vote
     'Quartier Ksar, Rue Principale', 18.0896, -15.9712, 600),
   ('NKT-003-001', 'Centre Sebkha',
     (SELECT id FROM c_sebkha), (SELECT id FROM w_sud),
-    'Boulevard Sebkha', 18.0532, -15.9845, 700);
+    'Boulevard Sebkha', 18.0532, -15.9845, 700)
+ON CONFLICT (code_bureau) DO NOTHING;
 
 -- ── Électeur de test ──────────────────────────────────────────────────────────
 -- IMPORTANT : Ne pas utiliser en production !
@@ -75,20 +78,23 @@ VALUES
     '1995-06-15', 'F',
     (SELECT id FROM c), (SELECT id FROM w),
     (SELECT id FROM b),
-    '+22220000002', TRUE, TRUE);
+    '+22220000002', TRUE, TRUE)
+ON CONFLICT (nni) DO NOTHING;
 
 -- ── Élection de test (présidentielle simulée) ─────────────────────────────────
 INSERT INTO elections
     (titre_fr, titre_ar, type_election, nb_tours,
      date_ouverture, date_fermeture, statut, is_public)
-VALUES (
+SELECT
   'Élection Présidentielle Test 2026',
   'الانتخابات الرئاسية التجريبية 2026',
   'presidentielle', 2,
-  NOW() - INTERVAL '1 hour',     -- Ouverte depuis 1h
-  NOW() + INTERVAL '11 hours',   -- Ferme dans 11h
+  NOW() - INTERVAL '1 hour',
+  NOW() + INTERVAL '11 hours',
   'en_cours', TRUE
-) RETURNING id;
+WHERE NOT EXISTS (
+  SELECT 1 FROM elections WHERE titre_fr = 'Élection Présidentielle Test 2026'
+);
 
 -- ── Candidats de test ─────────────────────────────────────────────────────────
 -- (À remplacer par l'ID réel retourné ci-dessus dans les seeds de dev)

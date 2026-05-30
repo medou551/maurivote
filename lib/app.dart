@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'utils/app_theme.dart';
@@ -7,8 +8,21 @@ import 'utils/app_router.dart';
 final localeProvider = NotifierProvider<LocaleNotifier, Locale>(LocaleNotifier.new);
 class LocaleNotifier extends Notifier<Locale> {
   @override
-  Locale build() => const Locale('fr');
-  void setLocale(Locale l) => state = l;
+  @override
+  Locale build() {
+    _load();
+    return const Locale('fr');
+  }
+  Future<void> _load() async {
+    final p = await SharedPreferences.getInstance();
+    final lang = p.getString('lang') ?? 'fr';
+    if (state.languageCode != lang) state = Locale(lang);
+  }
+  Future<void> setLocale(Locale l) async {
+    state = l;
+    final p = await SharedPreferences.getInstance();
+    await p.setString('lang', l.languageCode);
+  }
 }
 
 class MauriVoteApp extends ConsumerWidget {

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 class AppTheme {
   static const Color primaryGreen = Color(0xFF1B5E20);
@@ -16,7 +16,6 @@ class AppTheme {
         fontFamily: 'Roboto',
         colorScheme: ColorScheme.fromSeed(
           seedColor: primaryGreen,
-          brightness: Brightness.light,
           primary: primaryGreen,
           secondary: primaryGold,
           error: errorRed,
@@ -55,14 +54,17 @@ class AppTheme {
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none),
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
           focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: primaryGreen, width: 2)),
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: primaryGreen, width: 2),
+          ),
           errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: errorRed, width: 1.5)),
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: errorRed, width: 1.5),
+          ),
         ),
         // Riverpod 3.x: CardThemeData au lieu de CardTheme
         cardTheme: CardThemeData(
@@ -99,10 +101,11 @@ class AppTheme {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.06),
-              blurRadius: 12,
-              offset: const Offset(0, 4))
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
         ],
-        border: Border.all(color: lightGreen, width: 1),
+        border: Border.all(color: lightGreen),
       );
 }

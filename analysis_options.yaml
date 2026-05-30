@@ -8,7 +8,6 @@ analyzer:
     undefined_class: error
     undefined_function: error
     return_of_invalid_type: error
-    type_check_is_not_null: warning
     dead_code: warning
 
   exclude:

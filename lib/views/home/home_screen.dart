@@ -1,219 +1,254 @@
-﻿import '../../viewmodels/auth_viewmodel.dart';
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shimmer/shimmer.dart';
-import '../../models/models.dart';
+import '../../main.dart';
+import '../../services/smart_db_service.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/mauritania_flag.dart';
+import '../../viewmodels/auth_viewmodel.dart';
+import '../../app.dart';
 
-import '../../viewmodels/elections_viewmodel.dart';
-import '../../widgets/election_card.dart';
-
-
-/// Écran Accueil — Liste des élections avec filtres
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
+  @override
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  List<Map<String, dynamic>> _elections = [];
+  bool _loading = true;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final electionsAsync = ref.watch(electionsProvider);
-    final filter = ref.watch(electionFilterProvider);
-    final voter  = ref.watch(currentVoterProvider).value;
+  void initState() {
+    super.initState();
+    _load();
+  }
 
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    try {
+      final data = await SmartDbService.getElections();
+      if (mounted)
+        setState(() {
+          _elections = List<Map<String, dynamic>>.from(data as List);
+          _loading = false;
+        });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final voter = ref.watch(currentVoterProvider).value;
+    final locale = ref.watch(localeProvider);
+    final isAr = locale.languageCode == 'ar';
     return Scaffold(
       backgroundColor: AppTheme.backgroundWhite,
       body: SafeArea(
-        child: Column(
-          children: [
-            // â”€â”€ BanniÃ¨re mode offline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            
-
-            // â”€â”€ En-tÃªte â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            _Header(voterName: voter?.prenom ?? ''),
-
-            // â”€â”€ Filtres â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            _FilterBar(
-              current: filter,
-              onChanged: (f) =>
-                  ref.read(electionFilterProvider.notifier).state = f,
-            ),
-
-            // â”€â”€ Liste des Ã©lections â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            Expanded(
-              child: electionsAsync.when(
-                loading: () => _buildShimmer(),
-                error: (err, _) => _buildError(context, ref, err),
-                data: (_) {
-                  final filtered =
-                      ref.watch(filteredElectionsProvider(filter));
-                  return filtered.when(
-                    loading: () => _buildShimmer(),
-                    error: (e, _) => _buildError(context, ref, e),
-                    data: (elections) {
-                      if (elections.isEmpty) return _buildEmpty(filter);
-                      return RefreshIndicator(
-                        color: AppTheme.primaryGreen,
-                        onRefresh: () =>
-                            ref.refresh(electionsProvider.future),
-                        child: ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-                          itemCount: elections.length,
-                          itemBuilder: (ctx, i) => ElectionCard(
-                            election: elections[i],
-                            onTap: () => context.push(
-                                '/election/${elections[i].id}'),
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
+        child: Column(children: [
+          _buildHeader(voter),
+          _buildBanner(),
+          Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _elections.isEmpty
+                      ? _buildEmpty()
+                      : RefreshIndicator(
+                          onRefresh: _load,
+                          child: ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: _elections.length,
+                            itemBuilder: (_, i) => _buildCard(_elections[i]),
+                          ))),
+        ]),
       ),
     );
   }
 
-  Widget _buildShimmer() {
-    return Shimmer.fromColors(
-      baseColor: Colors.grey.shade200,
-      highlightColor: Colors.grey.shade50,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: 4,
-        itemBuilder: (_, __) => Container(
-          height: 120,
-          margin: const EdgeInsets.only(bottom: 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
+  Widget _buildHeader(voter) {
+    return Container(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        decoration: const BoxDecoration(
+            color: Color(0xFF006233),
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(16))),
+        child: Row(children: [
+          // Drapeau mauritanien mini
+          Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                  color: const Color(0xFF006233),
+                  shape: BoxShape.circle,
+                  border:
+                      Border.all(color: const Color(0xFFFFD700), width: 1.5)),
+              child: const Center(
+                  child: Text('☽★',
+                      style:
+                          TextStyle(fontSize: 13, color: Color(0xFFFFD700))))),
+          const SizedBox(width: 10),
+          Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                const Text('MauriVote',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold)),
+                Text(voter != null ? ref.watch(localeProvider).languageCode == 'ar' ? 'مرحباً' : 'Bienvenue' : ref.watch(localeProvider).languageCode == 'ar' ? 'التصويت الإلكتروني' : 'Vote Electronique',
+                    style:
+                        const TextStyle(color: Colors.white70, fontSize: 12)),
+              ])),
+          IconButton(
+              icon: const Icon(Icons.refresh, color: Colors.white),
+              onPressed: _load),
+        ]));
+  }
+
+  Widget _buildBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
+      color: const Color(0xFFF5F5F5),
+      child: const Row(children: [
+        Icon(Icons.verified_outlined, color: AppTheme.primaryGreen, size: 16),
+        SizedBox(width: 8),
+        Expanded(
+            child: Text('Commission Electorale Nationale Independante',
+                style: TextStyle(fontSize: 11, color: AppTheme.textSecondary))),
+      ]),
+    );
+  }
+
+  Widget _buildCard(Map<String, dynamic> e) {
+    final statut = e['statut'] ?? '';
+    final isOpen = statut == 'en_cours';
+    final isDone = statut == 'terminee';
+    final color = isOpen
+        ? AppTheme.primaryGreen
+        : isDone
+            ? Colors.grey
+            : Colors.orange;
+    final label = isOpen
+        ? 'En cours'
+        : isDone
+            ? 'Terminee'
+            : 'Planifiee';
+    final date = (e['date_ouverture'] ?? '').toString();
+    final dateStr = date.length >= 10 ? date.substring(0, 10) : '';
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          final id = e['id'].toString();
+          context.push('/election/$id');
+        },
+        child: Column(children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(16))),
+            child: Row(children: [
+              Container(
+                  width: 48,
+                  height: 48,
+                  decoration:
+                      BoxDecoration(color: color, shape: BoxShape.circle),
+                  child: const Icon(Icons.how_to_vote,
+                      color: Colors.white, size: 24)),
+              const SizedBox(width: 12),
+              Expanded(
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                    Text(e['titre_fr'] ?? '',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 15)),
+                    if ((e['titre_ar'] ?? '').isNotEmpty)
+                      Text(e['titre_ar'] ?? '',
+                          textDirection: TextDirection.rtl,
+                          style: const TextStyle(
+                              fontSize: 13, color: AppTheme.textSecondary)),
+                  ])),
+              Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                      color: color, borderRadius: BorderRadius.circular(20)),
+                  child: Text(label,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold))),
+            ]),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildError(BuildContext ctx, WidgetRef ref, Object err) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          const Icon(Icons.wifi_off_outlined, size: 64, color: AppTheme.textSecondary),
-          const SizedBox(height: 16),
-          const Text('Impossible de charger les élections',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center),
-          const SizedBox(height: 8),
-          const Text('Vérifiez votre connexion réseau',
-              style: TextStyle(color: AppTheme.textSecondary),
-              textAlign: TextAlign.center),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: () => ref.refresh(electionsProvider.future),
-            icon: const Icon(Icons.refresh),
-            label: const Text('Réessayer'),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Row(children: [
+              const Icon(Icons.ballot_outlined,
+                  size: 16, color: AppTheme.textSecondary),
+              const SizedBox(width: 6),
+              Text(e['type_election'] ?? '',
+                  style: const TextStyle(
+                      fontSize: 13, color: AppTheme.textSecondary)),
+              const Spacer(),
+              const Icon(Icons.calendar_today_outlined,
+                  size: 16, color: AppTheme.textSecondary),
+              const SizedBox(width: 6),
+              Text(dateStr,
+                  style: const TextStyle(
+                      fontSize: 13, color: AppTheme.textSecondary)),
+            ]),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: isOpen
+                ? ElevatedButton.icon(
+                    onPressed: () {
+                      final id = e['id'].toString();
+                      context.push('/vote/$id');
+                    },
+                    icon: const Icon(Icons.how_to_vote),
+                    label: Text(ref.watch(localeProvider).languageCode == 'ar' ? 'صوّت الآن' : 'Voter maintenant'),
+                    style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 48),
+                        backgroundColor: AppTheme.primaryGreen,
+                        foregroundColor: Colors.white))
+                : OutlinedButton.icon(
+                    onPressed: () {
+                      final id = e['id'].toString();
+                      context.push('/resultats/$id');
+                    },
+                    icon: const Icon(Icons.bar_chart),
+                    label: Text(ref.watch(localeProvider).languageCode == 'ar' ? 'عرض النتائج' : 'Voir les resultats'),
+                    style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 48),
+                        foregroundColor: AppTheme.primaryGreen,
+                        side: const BorderSide(color: AppTheme.primaryGreen))),
           ),
         ]),
       ),
     );
   }
 
-  Widget _buildEmpty(ElectionFilter filter) {
-    final messages = {
-      ElectionFilter.active:   ('Aucune élection en cours', Icons.how_to_vote_outlined),
-      ElectionFilter.upcoming: ('Aucune élection planifiée', Icons.event_outlined),
-      ElectionFilter.past:     ('Aucune élection terminée', Icons.history_outlined),
-      ElectionFilter.all:      ('Aucune élection disponible', Icons.ballot_outlined),
-    };
-    final (msg, icon) = messages[filter]!;
-    return Center(
-      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Icon(icon, size: 64, color: Colors.grey.shade300),
+  Widget _buildEmpty() => Center(
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        const Icon(Icons.ballot_outlined,
+            size: 64, color: AppTheme.primaryGreen),
         const SizedBox(height: 16),
-        Text(msg, style: const TextStyle(fontSize: 16,
-            color: AppTheme.textSecondary)),
-      ]),
-    );
-  }
-}
-
-// â”€â”€ Widget En-tÃªte â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-class _Header extends StatelessWidget {
-  final String voterName;
-  const _Header({required this.voterName});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppTheme.primaryGreen, Color(0xFF2E7D32)],
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(
-                voterName.isNotEmpty ? 'Bonjour, $voterName \u{1F44B}' : 'MauriVote',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold,
-                    color: Colors.white),
-              ),
-              const SizedBox(height: 2),
-              const Text('Élections de la République Islamique de Mauritanie',
-                  style: TextStyle(fontSize: 12, color: Colors.white70)),
-            ]),
-          ),
-          const Icon(Icons.how_to_vote, color: Colors.white, size: 32),
-        ],
-      ),
-    );
-  }
-}
-
-// â”€â”€ Widget Filtres â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-class _FilterBar extends StatelessWidget {
-  final ElectionFilter current;
-  final ValueChanged<ElectionFilter> onChanged;
-  const _FilterBar({required this.current, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Row(
-        children: ElectionFilter.values.map((f) {
-          final labels = {
-            ElectionFilter.all:      'Toutes',
-            ElectionFilter.active:   'En cours',
-            ElectionFilter.upcoming: 'À venir',
-            ElectionFilter.past:     'Terminées',
-          };
-          final isSelected = f == current;
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: FilterChip(
-              label: Text(labels[f]!),
-              selected: isSelected,
-              onSelected: (_) => onChanged(f),
-              selectedColor: AppTheme.lightGreen,
-              checkmarkColor: AppTheme.primaryGreen,
-              labelStyle: TextStyle(
-                color: isSelected ? AppTheme.primaryGreen : AppTheme.textSecondary,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              ),
-              side: BorderSide(
-                color: isSelected ? AppTheme.primaryGreen : Colors.grey.shade300,
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
+        const Text('Aucune election disponible',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 24),
+        ElevatedButton.icon(
+            onPressed: _load,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Actualiser')),
+      ]));
 }

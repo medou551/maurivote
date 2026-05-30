@@ -1,4 +1,4 @@
-import 'constants.dart';
+﻿import 'constants.dart';
 
 /// Utilitaires de validation pour MauriVote
 class AppValidators {

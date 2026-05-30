@@ -1,7 +1,7 @@
 ﻿name: maurivote
-description: Application de vote Ã©lectronique â€” RÃ©publique Islamique de Mauritanie
+description: Application de vote electronique - Republique Islamique de Mauritanie
 publish_to: 'none'
-version: 1.0.0+1
+version: 3.0.0+3
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -12,79 +12,58 @@ dependencies:
   flutter_localizations:
     sdk: flutter
 
-  # Backend Supabase
+  # Backend
   supabase_flutter: ^2.3.0
   flutter_dotenv: ^6.0.1
 
-  # Auth & SÃ©curitÃ©
+  # Auth & Securite
   local_auth: ^3.0.1
   encrypt: ^5.0.3
   crypto: ^3.0.3
-  secure_application: ^4.0.1
+  flutter_secure_storage: ^9.0.0
 
   # Navigation
   go_router: ^17.2.3
 
-  # Riverpod â€” VERSION FIXÃ‰E 2.x
+  # State Management
   flutter_riverpod: ^3.3.1
-  riverpod_annotation: ^4.0.2
 
-  # UI & Animations
-  lottie: ^3.0.0
-  cached_network_image: ^3.3.0
+  # UI
   shimmer: ^3.0.0
   fl_chart: ^1.2.0
-  flutter_animate: ^4.3.0
-  smooth_page_indicator: ^2.0.1
-  pin_code_fields: ^9.3.0
-  awesome_dialog: ^3.1.0
   qr_flutter: ^4.1.0
-  data_table_2: ^2.5.9
+  cached_network_image: ^3.3.0
+  pin_code_fields: ^9.3.0
+  cupertino_icons: ^1.0.6
 
   # Cartes
-  url_launcher: ^6.2.3
+  google_maps_flutter: ^2.5.0
+  geolocator: ^11.0.0
 
-  # Stockage local
+  # Stockage
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   connectivity_plus: ^7.1.1
-
-  # Notifications
-  firebase_core: ^4.7.0
-  firebase_messaging: ^16.2.0
-  firebase_crashlytics: ^5.2.0
-  flutter_local_notifications: ^21.0.0
-
-  # i18n
-  intl: ^0.20.2
-
-  # Formulaires
-  flutter_form_builder: ^10.3.0+2
-  form_builder_validators: ^11.3.0
+  shared_preferences: ^2.2.2
 
   # Utilitaires
+  sqflite: ^2.4.2
+  path_provider: ^2.1.5
+  pdf: ^3.10.8
+  google_mlkit_text_recognition: ^0.13.0
+  mobile_scanner: ^5.2.3
   share_plus: ^12.0.2
-  shared_preferences: ^2.2.2
-  dio: ^5.4.0
+  url_launcher: ^6.2.3
   image_picker: ^1.0.4
-  flutter_secure_storage: ^9.0.0
+  intl: ^0.20.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  integration_test:
-    sdk: flutter
   flutter_lints: ^6.0.0
-  mockito: ^5.4.4
-  build_runner: ^2.4.8
-  riverpod_generator: ^4.0.3
 
 flutter:
   uses-material-design: true
-  generate: true
 
   assets:
     - .env
-
-
-

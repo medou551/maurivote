@@ -47,7 +47,7 @@ class CandidateQuery {
   final int tour;
   const CandidateQuery({required this.electionId, this.tour = 1});
   @override
-  bool operator ==(Object o) => o is CandidateQuery && o.electionId == electionId && o.tour == tour;
+  bool operator ==(Object other) => other is CandidateQuery && other.electionId == electionId && other.tour == tour;
   @override
   int get hashCode => Object.hash(electionId, tour);
 }
@@ -57,7 +57,7 @@ class ResultatQuery {
   final int tour;
   const ResultatQuery({required this.electionId, this.tour = 1});
   @override
-  bool operator ==(Object o) => o is ResultatQuery && o.electionId == electionId && o.tour == tour;
+  bool operator ==(Object other) => other is ResultatQuery && other.electionId == electionId && other.tour == tour;
   @override
   int get hashCode => Object.hash(electionId, tour);
 }

@@ -1,150 +1,374 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:local_auth/local_auth.dart';
+import '../../main.dart';
 import '../../utils/app_theme.dart';
-import '../../utils/constants.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 
-/// Écran Biométrie — Proposer / valider l'empreinte ou Face ID
 class BiometricScreen extends ConsumerStatefulWidget {
   const BiometricScreen({super.key});
-
   @override
   ConsumerState<BiometricScreen> createState() => _BiometricScreenState();
 }
 
-class _BiometricScreenState extends ConsumerState<BiometricScreen> {
-  bool _biometricAvailable = false;
-  bool _isChecking = true;
+class _BiometricScreenState extends ConsumerState<BiometricScreen>
+    with TickerProviderStateMixin {
+  static const Color _green = Color(0xFF006233);
+  static const Color _gold = Color(0xFFFFD700);
+  static const Color _red = Color(0xFFD90012);
+  static const Color _dark = Color(0xFF004D26);
+
+  bool _checking = true;
+  bool _available = false;
+  bool _failed = false;
+  bool _navigated = false;
+  int _attempts = 0;
+  String _errorMsg = '';
+  List<BiometricType> _types = [];
+  static const int _maxAttempts = 5;
+
+  late AnimationController _pulseCtrl;
+  late AnimationController _shakeCtrl;
+  late Animation<double> _pulseAnim;
+  late Animation<double> _shakeAnim;
 
   @override
   void initState() {
     super.initState();
-    _checkBiometric();
+    _pulseCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1500))
+      ..repeat(reverse: true);
+    _shakeCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 500));
+    _pulseAnim = Tween<double>(begin: 1.0, end: 1.08)
+        .animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
+    _shakeAnim = Tween<double>(begin: 0, end: 8)
+        .animate(CurvedAnimation(parent: _shakeCtrl, curve: Curves.elasticIn));
+    _check();
   }
 
-  Future<void> _checkBiometric() async {
-    final auth = ref.read(authServiceProvider);
-    final available = await auth.isBiometricAvailable();
-    if (mounted) setState(() { _biometricAvailable = available; _isChecking = false; });
-    // Si biométrie disponible, lancer directement
-    if (available) _authenticate();
+  @override
+  void dispose() {
+    _pulseCtrl.dispose();
+    _shakeCtrl.dispose();
+    super.dispose();
   }
 
-  Future<void> _authenticate() async {
-    await ref.read(authStateProvider.notifier).authenticateBiometric();
-    if (!mounted) return;
-    final state = ref.read(authStateProvider);
-    if (state.status == AuthStatus.authenticated) {
-      context.go('/home');
+  Future<void> _check() async {
+    try {
+      final auth = LocalAuthentication();
+      final avail =
+          await auth.canCheckBiometrics || await auth.isDeviceSupported();
+      final types =
+          avail ? await auth.getAvailableBiometrics() : <BiometricType>[];
+      if (mounted) {
+        setState(() {
+          _available = avail;
+          _types = types;
+          _checking = false;
+        });
+        _authenticate();
+      }
+    } catch (_) {
+      if (mounted)
+        setState(() {
+          _available = false;
+          _checking = false;
+        });
     }
   }
 
-  Future<void> _skipBiometric() async {
-    // Continuer sans biométrie
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(AppConstants.prefBiometricEnabled, false);
-    await ref.read(authStateProvider.notifier).completeLogin();
-    if (!mounted) return;
-    context.go('/home');
+  Future<void> _authenticate() async {
+    if (_navigated || _attempts >= _maxAttempts) return;
+    setState(() {
+      _failed = false;
+      _errorMsg = '';
+    });
+    try {
+      final auth = LocalAuthentication();
+      final ok = await auth.authenticate(
+        localizedReason: 'Confirmez votre identite pour acceder a MauriVote',
+      );
+      if (!mounted || _navigated) return;
+      if (ok) {
+        _navigated = true;
+        HapticFeedback.heavyImpact();
+        await ref.read(authStateProvider.notifier).completeLogin();
+        if (!mounted) return;
+        // Vérifier si admin
+        final nni = await ref.read(authStateProvider.notifier).getCurrentNni();
+        if (!mounted) return;
+        if (nni != null) {
+          try {
+            final resp = await supabase
+                .from('voters')
+                .select('account_type')
+                .eq('nni', nni)
+                .maybeSingle();
+            final isAdmin = resp?['account_type'] == 'admin';
+            if (mounted) context.go(isAdmin ? '/admin' : '/home');
+          } catch (_) {
+            if (mounted) context.go('/home');
+          }
+        } else {
+          context.go('/home');
+        }
+      } else {
+        HapticFeedback.vibrate();
+        _shakeCtrl.forward(from: 0);
+        setState(() {
+          _attempts++;
+          _failed = true;
+          _errorMsg =
+              'Echec. ${_maxAttempts - _attempts} tentative(s) restante(s).';
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      HapticFeedback.vibrate();
+      _shakeCtrl.forward(from: 0);
+      setState(() {
+        _attempts++;
+        _failed = true;
+        _errorMsg = 'Erreur biometrie. Reessayez.';
+      });
+    }
+  }
+
+  Future<void> _logout() async {
+    await ref.read(authStateProvider.notifier).signOut();
+    if (mounted) context.go('/login');
+  }
+
+  String get _label {
+    if (_types.contains(BiometricType.face)) return 'Face ID';
+    if (_types.contains(BiometricType.fingerprint)) return 'Empreinte digitale';
+    return 'Biometrie';
+  }
+
+  IconData get _icon {
+    if (_types.contains(BiometricType.face))
+      return Icons.face_retouching_natural;
+    return Icons.fingerprint;
   }
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authStateProvider);
-    final isLoading = authState.status == AuthStatus.loading;
-
+    final blocked = _attempts >= _maxAttempts;
     return Scaffold(
-      backgroundColor: AppTheme.backgroundWhite,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 28),
-          child: _isChecking
-              ? const Center(child: CircularProgressIndicator())
-              : Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // ── Illustration ──────────────────────────────────────
-                    Container(
-                      width: 120, height: 120,
-                      decoration: BoxDecoration(
-                        color: AppTheme.lightGreen.withOpacity(0.3),
+      body: Container(
+        decoration: const BoxDecoration(
+            gradient: LinearGradient(
+                colors: [Color(0xFF004D26), Color(0xFF006233)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter)),
+        child: SafeArea(
+            child: Column(children: [
+          // Bande rouge haut
+          Container(
+              height: 5,
+              decoration: const BoxDecoration(
+                  gradient:
+                      LinearGradient(colors: [_red, Color(0xFFFF1A2E), _red]))),
+
+          // Header
+          Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              child: Row(children: [
+                Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
                         shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        _biometricAvailable
-                            ? Icons.fingerprint
-                            : Icons.no_encryption_outlined,
-                        size: 64,
-                        color: _biometricAvailable
-                            ? AppTheme.primaryGreen
-                            : AppTheme.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 32),
+                        border: Border.all(color: _gold, width: 1.5)),
+                    child: const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text('☽',
+                              style: TextStyle(fontSize: 12, color: _gold)),
+                          Icon(Icons.how_to_vote_rounded,
+                              size: 14, color: Colors.white),
+                        ])),
+                const SizedBox(width: 12),
+                const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('MauriVote',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold)),
+                      Text('Verification requise',
+                          style:
+                              TextStyle(color: Colors.white70, fontSize: 12)),
+                    ]),
+              ])),
 
-                    Text(
-                      _biometricAvailable
-                          ? 'Authentification biométrique'
-                          : 'Biométrie non disponible',
-                      style: const TextStyle(fontSize: 22,
-                          fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      _biometricAvailable
-                          ? 'Posez votre doigt sur le capteur ou regardez la caméra pour confirmer votre identité'
-                          : 'Votre appareil ne supporte pas la biométrie. Vous pouvez continuer sans.',
-                      style: const TextStyle(fontSize: 14,
-                          color: AppTheme.textSecondary, height: 1.5),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 40),
+          // Contenu principal
+          Expanded(
+              child: _checking
+                  ? const Center(child: CircularProgressIndicator(color: _gold))
+                  : Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                          // Icone biométrique animée
+                          if (!blocked)
+                            GestureDetector(
+                                onTap: _authenticate,
+                                child: AnimatedBuilder(
+                                    animation: Listenable.merge(
+                                        [_pulseCtrl, _shakeCtrl]),
+                                    builder: (_, child) => Transform.translate(
+                                        offset: Offset(
+                                            _failed
+                                                ? _shakeAnim.value *
+                                                    ((_attempts % 2 == 0)
+                                                        ? 1
+                                                        : -1)
+                                                : 0,
+                                            0),
+                                        child: ScaleTransition(
+                                            scale: _failed
+                                                ? const AlwaysStoppedAnimation(
+                                                    1.0)
+                                                : _pulseAnim,
+                                            child: child)),
+                                    child: Container(
+                                        width: 160,
+                                        height: 160,
+                                        decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: _failed
+                                                ? Colors.red.withOpacity(0.15)
+                                                : Colors.white
+                                                    .withOpacity(0.12),
+                                            border: Border.all(
+                                                color: _failed
+                                                    ? Colors.red
+                                                    : _gold,
+                                                width: 3),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                  color: (_failed
+                                                          ? Colors.red
+                                                          : _gold)
+                                                      .withOpacity(0.3),
+                                                  blurRadius: 30,
+                                                  spreadRadius: 5)
+                                            ]),
+                                        child: Icon(_icon,
+                                            size: 80,
+                                            color: _failed
+                                                ? Colors.red
+                                                : Colors.white)))),
 
-                    if (authState.status == AuthStatus.error)
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        margin: const EdgeInsets.only(bottom: 16),
-                        decoration: BoxDecoration(
-                          color: AppTheme.errorRed.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: AppTheme.errorRed.withOpacity(0.3)),
-                        ),
-                        child: Row(children: [
-                          const Icon(Icons.warning_amber_outlined,
-                              color: AppTheme.errorRed, size: 18),
-                          const SizedBox(width: 8),
-                          Expanded(child: Text(
-                            authState.errorMessage ?? 'Échec de l\'authentification',
-                            style: const TextStyle(
-                                color: AppTheme.errorRed, fontSize: 13),
-                          )),
-                        ]),
-                      ),
+                          if (blocked)
+                            Container(
+                                width: 130,
+                                height: 130,
+                                decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.red.withOpacity(0.15),
+                                    border: Border.all(
+                                        color: Colors.red, width: 3)),
+                                child: const Icon(Icons.block,
+                                    size: 60, color: Colors.red)),
 
-                    if (_biometricAvailable)
-                      ElevatedButton.icon(
-                        onPressed: isLoading ? null : _authenticate,
-                        icon: isLoading
-                            ? const SizedBox(height: 18, width: 18,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white))
-                            : const Icon(Icons.fingerprint),
-                        label: const Text('Valider avec la biométrie'),
-                      ),
+                          const SizedBox(height: 24),
 
-                    const SizedBox(height: 14),
-                    OutlinedButton(
-                      onPressed: isLoading ? null : _skipBiometric,
-                      child: Text(_biometricAvailable
-                          ? 'Continuer sans biométrie'
-                          : 'Continuer'),
-                    ),
-                  ],
-                ),
-        ),
+                          // Label
+                          if (!blocked)
+                            Text(_label,
+                                style: TextStyle(
+                                    color:
+                                        _failed ? Colors.red.shade300 : _gold,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold)),
+                          if (blocked)
+                            const Text('Trop de tentatives',
+                                style: TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold)),
+
+                          const SizedBox(height: 8),
+                          Text(
+                              blocked
+                                  ? 'Vous avez depasse le nombre de tentatives'
+                                  : _failed
+                                      ? _errorMsg
+                                      : 'Appuyez sur l\'icone pour vous identifier',
+                              style: TextStyle(
+                                  color: _failed || blocked
+                                      ? Colors.red.shade300
+                                      : Colors.white70,
+                                  fontSize: 13),
+                              textAlign: TextAlign.center),
+
+                          const SizedBox(height: 32),
+
+                          // Erreur
+                          if (_failed && !blocked) ...[
+                            Container(
+                                margin:
+                                    const EdgeInsets.symmetric(horizontal: 40),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                    color: Colors.red.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                        color: Colors.red.withOpacity(0.3))),
+                                child: Row(children: [
+                                  const Icon(Icons.warning_amber_outlined,
+                                      color: Colors.red, size: 18),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                      child: Text(_errorMsg,
+                                          style: const TextStyle(
+                                              color: Colors.red,
+                                              fontSize: 12))),
+                                ])),
+                            const SizedBox(height: 16),
+                            ElevatedButton.icon(
+                                onPressed: _authenticate,
+                                icon: const Icon(Icons.refresh),
+                                label: const Text('Reessayer'),
+                                style: ElevatedButton.styleFrom(
+                                    backgroundColor: _gold,
+                                    foregroundColor: _dark,
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 32, vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(12)))),
+                          ],
+                        ])),
+
+          // Déconnexion
+          Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              child: TextButton.icon(
+                  onPressed: _logout,
+                  icon: Icon(Icons.logout,
+                      size: 16, color: Colors.white.withOpacity(0.5)),
+                  label: Text(
+                      blocked
+                          ? 'Trop de tentatives — Se deconnecter'
+                          : 'Se deconnecter',
+                      style: TextStyle(
+                          color: Colors.white.withOpacity(0.5),
+                          fontSize: 12)))),
+
+          // Bande rouge bas
+          Container(
+              height: 5,
+              decoration: const BoxDecoration(
+                  gradient:
+                      LinearGradient(colors: [_red, Color(0xFFFF1A2E), _red]))),
+        ])),
       ),
     );
   }

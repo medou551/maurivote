@@ -9,7 +9,6 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   group('MauriVote — Tests d\'intégration complets', () {
-
     // ── T01 : Démarrage de l'application ─────────────────────────────────────
     testWidgets('T01 — L\'application démarre et affiche le Splash Screen',
         (tester) async {
@@ -31,13 +30,17 @@ void main() {
 
       // Swipe vers slide 2
       await tester.drag(
-          find.byType(PageView), const Offset(-400, 0));
+        find.byType(PageView),
+        const Offset(-400, 0),
+      );
       await tester.pumpAndSettle();
       expect(find.text('Vote Simple'), findsOneWidget);
 
       // Swipe vers slide 3
       await tester.drag(
-          find.byType(PageView), const Offset(-400, 0));
+        find.byType(PageView),
+        const Offset(-400, 0),
+      );
       await tester.pumpAndSettle();
       expect(find.text('Résultats en Direct'), findsOneWidget);
     });
@@ -63,12 +66,15 @@ void main() {
       await tester.pumpAndSettle();
 
       // Tenter de soumettre
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Recevoir le code SMS'));
+      await tester
+          .tap(find.widgetWithText(ElevatedButton, 'Recevoir le code SMS'));
       await tester.pumpAndSettle();
 
       // Message d'erreur de validation
-      expect(find.text('Le NNI doit contenir exactement 10 chiffres'),
-          findsOneWidget);
+      expect(
+        find.text('Le NNI doit contenir exactement 10 chiffres'),
+        findsOneWidget,
+      );
     });
 
     // ── T04 : NNI avec lettres refusé ─────────────────────────────────────────
@@ -123,8 +129,10 @@ void main() {
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
       final materialApp = tester.widget<MaterialApp>(find.byType(MaterialApp));
-      expect(materialApp.theme?.colorScheme.primary,
-          const Color(0xFF1B5E20));
+      expect(
+        materialApp.theme?.colorScheme.primary,
+        const Color(0xFF1B5E20),
+      );
     });
 
     // ── T08 : Support multilingue — langue par défaut FR ─────────────────────
@@ -151,8 +159,7 @@ void main() {
 
   // ── Tests de performance ───────────────────────────────────────────────────
   group('Tests de performance', () {
-    testWidgets('PERF01 — Démarrage en moins de 3 secondes',
-        (tester) async {
+    testWidgets('PERF01 — Démarrage en moins de 3 secondes', (tester) async {
       final stopwatch = Stopwatch()..start();
       app.main();
       await tester.pumpAndSettle(const Duration(seconds: 5));
@@ -164,8 +171,7 @@ void main() {
       expect(stopwatch.elapsedMilliseconds, lessThan(5000));
     });
 
-    testWidgets('PERF02 — Scroll liste élections sans jank',
-        (tester) async {
+    testWidgets('PERF02 — Scroll liste élections sans jank', (tester) async {
       app.main();
       await tester.pumpAndSettle(const Duration(seconds: 4));
 

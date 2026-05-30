@@ -1,4 +1,4 @@
-// ══════════════════════════════════════════════════════════════════════════════
+﻿// ══════════════════════════════════════════════════════════════════════════════
 // TESTS UNITAIRES — MauriVote
 // Fichier groupant les tests des utilitaires crypto et du validateur NNI
 // ══════════════════════════════════════════════════════════════════════════════
@@ -7,7 +7,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:maurivote/models/models.dart';
 import 'package:maurivote/utils/crypto_utils.dart';
 import 'package:maurivote/utils/validators.dart';
-import 'package:maurivote/utils/constants.dart';
 
 void main() {
   const testSel = 'sel-test-de-32-caracteres-minimum!!';
@@ -20,7 +19,6 @@ void main() {
   // TESTS : CryptoUtils
   // ══════════════════════════════════════════════════════════════════════════
   group('CryptoUtils', () {
-
     group('generateIV()', () {
       test('génère un IV de 16 bytes', () {
         final iv = CryptoUtils.generateIV();
@@ -59,8 +57,14 @@ void main() {
       });
 
       test('sels différents → clés différentes', () {
-        final key1 = CryptoUtils.deriveAesKey(testToken, 'sel-1-de-32-caract-eres-ok!!!!!');
-        final key2 = CryptoUtils.deriveAesKey(testToken, 'sel-2-de-32-caract-eres-ok!!!!!');
+        final key1 = CryptoUtils.deriveAesKey(
+          testToken,
+          'sel-1-de-32-caract-eres-ok!!!!!',
+        );
+        final key2 = CryptoUtils.deriveAesKey(
+          testToken,
+          'sel-2-de-32-caract-eres-ok!!!!!',
+        );
         expect(key1, isNot(equals(key2)));
       });
     });
@@ -68,10 +72,10 @@ void main() {
     group('chiffrerVote()', () {
       test('le candidat ne figure pas dans le payload chiffré', () {
         final result = CryptoUtils.chiffrerVote(
-          candidateId:  testCandidateId,
-          electionId:   testElectionId,
+          candidateId: testCandidateId,
+          electionId: testElectionId,
           sessionToken: testToken,
-          selServeur:   testSel,
+          selServeur: testSel,
         );
         expect(result['vote_chiffre'], isNot(contains(testCandidateId)));
         expect(result['vote_chiffre'], isNot(contains(testElectionId)));
@@ -79,8 +83,10 @@ void main() {
 
       test('retourne vote_chiffre, iv, et signature', () {
         final result = CryptoUtils.chiffrerVote(
-          candidateId: testCandidateId, electionId: testElectionId,
-          sessionToken: testToken, selServeur: testSel,
+          candidateId: testCandidateId,
+          electionId: testElectionId,
+          sessionToken: testToken,
+          selServeur: testSel,
         );
         expect(result.keys, containsAll(['vote_chiffre', 'iv', 'signature']));
         expect(result['vote_chiffre'], isNotEmpty);
@@ -88,14 +94,19 @@ void main() {
         expect(result['signature']!.length, equals(64)); // SHA-256 hex
       });
 
-      test('deux chiffrements identiques → résultats différents (IV aléatoire)', () {
+      test('deux chiffrements identiques → résultats différents (IV aléatoire)',
+          () {
         final r1 = CryptoUtils.chiffrerVote(
-          candidateId: testCandidateId, electionId: testElectionId,
-          sessionToken: testToken, selServeur: testSel,
+          candidateId: testCandidateId,
+          electionId: testElectionId,
+          sessionToken: testToken,
+          selServeur: testSel,
         );
         final r2 = CryptoUtils.chiffrerVote(
-          candidateId: testCandidateId, electionId: testElectionId,
-          sessionToken: testToken, selServeur: testSel,
+          candidateId: testCandidateId,
+          electionId: testElectionId,
+          sessionToken: testToken,
+          selServeur: testSel,
         );
         // L'IV aléatoire garantit des chiffrements différents
         expect(r1['iv'], isNot(equals(r2['iv'])));
@@ -104,8 +115,10 @@ void main() {
 
       test('la signature est valide', () {
         final result = CryptoUtils.chiffrerVote(
-          candidateId: testCandidateId, electionId: testElectionId,
-          sessionToken: testToken, selServeur: testSel,
+          candidateId: testCandidateId,
+          electionId: testElectionId,
+          sessionToken: testToken,
+          selServeur: testSel,
         );
         final isValid = CryptoUtils.verifySignature(
           data: result['vote_chiffre']! + result['iv']!,
@@ -119,30 +132,47 @@ void main() {
     group('hashVoter()', () {
       test('retourne un hash de 64 caractères (SHA-256 hex)', () {
         final hash = CryptoUtils.hashVoter(
-          nni: testNni, electionId: testElectionId, selServeur: testSel,
+          nni: testNni,
+          electionId: testElectionId,
+          selServeur: testSel,
         );
         expect(hash.length, equals(64));
       });
 
       test('hash déterministe — mêmes entrées → même hash', () {
         final h1 = CryptoUtils.hashVoter(
-            nni: testNni, electionId: testElectionId, selServeur: testSel);
+          nni: testNni,
+          electionId: testElectionId,
+          selServeur: testSel,
+        );
         final h2 = CryptoUtils.hashVoter(
-            nni: testNni, electionId: testElectionId, selServeur: testSel);
+          nni: testNni,
+          electionId: testElectionId,
+          selServeur: testSel,
+        );
         expect(h1, equals(h2));
       });
 
       test('NNIs différents → hashs différents', () {
         final h1 = CryptoUtils.hashVoter(
-            nni: '1111111111', electionId: testElectionId, selServeur: testSel);
+          nni: '1111111111',
+          electionId: testElectionId,
+          selServeur: testSel,
+        );
         final h2 = CryptoUtils.hashVoter(
-            nni: '2222222222', electionId: testElectionId, selServeur: testSel);
+          nni: '2222222222',
+          electionId: testElectionId,
+          selServeur: testSel,
+        );
         expect(h1, isNot(equals(h2)));
       });
 
       test('le NNI original ne peut pas être retrouvé depuis le hash', () {
         final hash = CryptoUtils.hashVoter(
-            nni: testNni, electionId: testElectionId, selServeur: testSel);
+          nni: testNni,
+          electionId: testElectionId,
+          selServeur: testSel,
+        );
         // Le hash ne contient pas le NNI en clair
         expect(hash, isNot(contains(testNni)));
       });
@@ -172,23 +202,41 @@ void main() {
       test('retourne true pour une signature valide', () {
         const data = 'données-importantes';
         final sig = CryptoUtils.hmacSign(data: data, key: testSel);
-        expect(CryptoUtils.verifySignature(
-            data: data, signature: sig, key: testSel), isTrue);
+        expect(
+          CryptoUtils.verifySignature(
+            data: data,
+            signature: sig,
+            key: testSel,
+          ),
+          isTrue,
+        );
       });
 
       test('retourne false pour une signature altérée', () {
         const data = 'données-importantes';
         final sig = CryptoUtils.hmacSign(data: data, key: testSel);
         final alteredSig = '${sig.substring(0, 60)}XXXX'; // Altération
-        expect(CryptoUtils.verifySignature(
-            data: data, signature: alteredSig, key: testSel), isFalse);
+        expect(
+          CryptoUtils.verifySignature(
+            data: data,
+            signature: alteredSig,
+            key: testSel,
+          ),
+          isFalse,
+        );
       });
 
       test('retourne false pour des données altérées', () {
         const data = 'données-originales';
         final sig = CryptoUtils.hmacSign(data: data, key: testSel);
-        expect(CryptoUtils.verifySignature(
-            data: 'données-altérées', signature: sig, key: testSel), isFalse);
+        expect(
+          CryptoUtils.verifySignature(
+            data: 'données-altérées',
+            signature: sig,
+            key: testSel,
+          ),
+          isFalse,
+        );
       });
     });
 
@@ -211,7 +259,6 @@ void main() {
   // TESTS : AppValidators
   // ══════════════════════════════════════════════════════════════════════════
   group('AppValidators', () {
-
     group('validateNni()', () {
       test('accepte un NNI valide de 10 chiffres', () {
         expect(AppValidators.validateNni('1234567890'), isNull);
@@ -225,12 +272,15 @@ void main() {
       });
 
       test('rejette un NNI trop court', () {
-        expect(AppValidators.validateNni('123456789'), isNotNull);  // 9 chiffres
+        expect(AppValidators.validateNni('123456789'), isNotNull); // 9 chiffres
         expect(AppValidators.validateNni('1'), isNotNull);
       });
 
       test('rejette un NNI trop long', () {
-        expect(AppValidators.validateNni('12345678901'), isNotNull); // 11 chiffres
+        expect(
+          AppValidators.validateNni('12345678901'),
+          isNotNull,
+        ); // 11 chiffres
       });
 
       test('rejette un NNI avec des lettres', () {
@@ -270,33 +320,45 @@ void main() {
     group('isElectionActive()', () {
       test('retourne true si maintenant est dans la période', () {
         final now = DateTime.now().toUtc();
-        expect(AppValidators.isElectionActive(
-          ouverture: now.subtract(const Duration(hours: 2)),
-          fermeture: now.add(const Duration(hours: 8)),
-        ), isTrue);
+        expect(
+          AppValidators.isElectionActive(
+            ouverture: now.subtract(const Duration(hours: 2)),
+            fermeture: now.add(const Duration(hours: 8)),
+          ),
+          isTrue,
+        );
       });
 
       test('retourne false si pas encore ouverte', () {
         final now = DateTime.now().toUtc();
-        expect(AppValidators.isElectionActive(
-          ouverture: now.add(const Duration(hours: 1)),
-          fermeture: now.add(const Duration(hours: 9)),
-        ), isFalse);
+        expect(
+          AppValidators.isElectionActive(
+            ouverture: now.add(const Duration(hours: 1)),
+            fermeture: now.add(const Duration(hours: 9)),
+          ),
+          isFalse,
+        );
       });
 
       test('retourne false si déjà fermée', () {
         final now = DateTime.now().toUtc();
-        expect(AppValidators.isElectionActive(
-          ouverture: now.subtract(const Duration(hours: 10)),
-          fermeture: now.subtract(const Duration(hours: 1)),
-        ), isFalse);
+        expect(
+          AppValidators.isElectionActive(
+            ouverture: now.subtract(const Duration(hours: 10)),
+            fermeture: now.subtract(const Duration(hours: 1)),
+          ),
+          isFalse,
+        );
       });
     });
 
     group('isValidUuid()', () {
       test('accepte un UUID v4 valide', () {
         expect(AppValidators.isValidUuid(testElectionId), isTrue);
-        expect(AppValidators.isValidUuid('550e8400-e29b-41d4-a716-446655440000'), isTrue);
+        expect(
+          AppValidators.isValidUuid('550e8400-e29b-41d4-a716-446655440000'),
+          isTrue,
+        );
       });
 
       test('rejette une chaîne non-UUID', () {
@@ -321,10 +383,10 @@ void main() {
         'titre_ar': 'الانتخابات الرئاسية 2024',
         'type_election': 'presidentielle',
         'nb_tours': 2,
-        'date_ouverture': DateTime.now()
-            .subtract(const Duration(hours: 2)).toIso8601String(),
-        'date_fermeture': DateTime.now()
-            .add(const Duration(hours: 8)).toIso8601String(),
+        'date_ouverture':
+            DateTime.now().subtract(const Duration(hours: 2)).toIso8601String(),
+        'date_fermeture':
+            DateTime.now().add(const Duration(hours: 8)).toIso8601String(),
         'statut': 'en_cours',
         'tour_actuel': 1,
         'is_public': true,
@@ -336,7 +398,7 @@ void main() {
       expect(election.id, equals(testElectionId));
       expect(election.titreFr, equals('Élection Présidentielle 2024'));
       expect(election.type, equals(ElectionType.presidentielle));
-      expect(election.statut, equals(ElectionStatus.en_cours));
+      expect(election.statut, equals(ElectionStatus.enCours));
     });
 
     test('isVotable retourne true quand ouverte et en_cours', () {
@@ -346,11 +408,10 @@ void main() {
 
     test('isVotable retourne false quand terminée', () {
       electionJson['statut'] = 'terminee';
-      electionJson['date_fermeture'] = DateTime.now()
-          .subtract(const Duration(hours: 1)).toIso8601String();
+      electionJson['date_fermeture'] =
+          DateTime.now().subtract(const Duration(hours: 1)).toIso8601String();
       final election = Election.fromJson(electionJson);
       expect(election.isVotable, isFalse);
     });
   });
 }
-

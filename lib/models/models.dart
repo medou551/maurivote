@@ -1,4 +1,4 @@
-// ══════════════════════════════════════════════════════════════════════════════
+﻿// ══════════════════════════════════════════════════════════════════════════════
 // MODÈLES DE DONNÉES — MauriVote
 // Tous les modèles avec sérialisation JSON manuelle (sans génération de code
 // pour que les fichiers soient utilisables sans build_runner)
@@ -39,38 +39,53 @@ class Voter {
   });
 
   String get nomComplet => '$prenom $nom';
-  String get nniMasque  => '${nni.substring(0, 3)}****${nni.substring(7)}';
+  String get nniMasque => '${nni.substring(0, 3)}****${nni.substring(7)}';
 
   factory Voter.fromJson(Map<String, dynamic> json) => Voter(
-    id:             json['id'],
-    nni:            json['nni'],
-    nom:            json['nom'],
-    prenom:         json['prenom'],
-    dateNaissance:  DateTime.parse(json['date_naissance']),
-    sexe:           json['sexe'],
-    communeId:      json['commune_id'],
-    wilayaId:       json['wilaya_id'],
-    bureauVoteId:   json['bureau_vote_id'],
-    telephone:      json['telephone'],
-    photoUrl:       json['photo_url'],
-    isVerified:     json['is_verified'] ?? false,
-    isActive:       json['is_active'] ?? true,
-    createdAt:      DateTime.parse(json['created_at']),
-  );
+        id: json['id'],
+        nni: json['nni'],
+        nom: json['nom'],
+        prenom: json['prenom'],
+        dateNaissance: DateTime.parse(json['date_naissance']),
+        sexe: json['sexe'],
+        communeId: json['commune_id'],
+        wilayaId: json['wilaya_id'],
+        bureauVoteId: json['bureau_vote_id'],
+        telephone: json['telephone'],
+        photoUrl: json['photo_url'],
+        isVerified: json['is_verified'] ?? false,
+        isActive: json['is_active'] ?? true,
+        createdAt: DateTime.parse(json['created_at']),
+      );
 
   Map<String, dynamic> toJson() => {
-    'id': id, 'nni': nni, 'nom': nom, 'prenom': prenom,
-    'date_naissance': dateNaissance.toIso8601String(),
-    'sexe': sexe, 'commune_id': communeId, 'wilaya_id': wilayaId,
-    'bureau_vote_id': bureauVoteId, 'telephone': telephone,
-    'photo_url': photoUrl, 'is_verified': isVerified,
-    'is_active': isActive, 'created_at': createdAt.toIso8601String(),
-  };
+        'id': id,
+        'nni': nni,
+        'nom': nom,
+        'prenom': prenom,
+        'date_naissance': dateNaissance.toIso8601String(),
+        'sexe': sexe,
+        'commune_id': communeId,
+        'wilaya_id': wilayaId,
+        'bureau_vote_id': bureauVoteId,
+        'telephone': telephone,
+        'photo_url': photoUrl,
+        'is_verified': isVerified,
+        'is_active': isActive,
+        'created_at': createdAt.toIso8601String(),
+      };
 }
 
 // ── election.dart ─────────────────────────────────────────────────────────────
-enum ElectionType { presidentielle, legislative, municipale, regionale, referendum }
-enum ElectionStatus { planifiee, en_cours, terminee, annulee }
+enum ElectionType {
+  presidentielle,
+  legislative,
+  municipale,
+  regionale,
+  referendum
+}
+
+enum ElectionStatus { planifiee, enCours, terminee, annulee }
 
 class Election {
   final String id;
@@ -103,7 +118,7 @@ class Election {
     required this.isPublic,
   });
 
-  bool get isActive => statut == ElectionStatus.en_cours;
+  bool get isActive => statut == ElectionStatus.enCours;
   bool get isVotable {
     final now = DateTime.now().toUtc();
     return isActive &&
@@ -112,42 +127,49 @@ class Election {
   }
 
   String get typeLabel => switch (type) {
-    ElectionType.presidentielle => 'Présidentielle',
-    ElectionType.legislative    => 'Législative',
-    ElectionType.municipale     => 'Municipale',
-    ElectionType.regionale      => 'Régionale',
-    ElectionType.referendum     => 'Référendum',
-  };
+        ElectionType.presidentielle => 'Présidentielle',
+        ElectionType.legislative => 'Législative',
+        ElectionType.municipale => 'Municipale',
+        ElectionType.regionale => 'Régionale',
+        ElectionType.referendum => 'Référendum',
+      };
 
   factory Election.fromJson(Map<String, dynamic> json) => Election(
-    id:             json['id'],
-    titreFr:        json['titre_fr'],
-    titreAr:        json['titre_ar'],
-    type:           ElectionType.values.firstWhere(
-                      (e) => e.name == json['type_election'],
-                      orElse: () => ElectionType.presidentielle),
-    nbTours:        json['nb_tours'] ?? 2,
-    dateOuverture:  DateTime.parse(json['date_ouverture']),
-    dateFermeture:  DateTime.parse(json['date_fermeture']),
-    dateResultats:  json['date_resultats'] != null
-                      ? DateTime.parse(json['date_resultats']) : null,
-    statut:         ElectionStatus.values.firstWhere(
-                      (e) => e.name == (json['statut'] ?? 'planifiee'),
-                      orElse: () => ElectionStatus.planifiee),
-    tourActuel:     json['tour_actuel'] ?? 1,
-    descriptionFr:  json['description_fr'],
-    descriptionAr:  json['description_ar'],
-    isPublic:       json['is_public'] ?? true,
-  );
+        id: json['id'],
+        titreFr: json['titre_fr'],
+        titreAr: json['titre_ar'],
+        type: ElectionType.values.firstWhere(
+          (e) => e.name == json['type_election'],
+          orElse: () => ElectionType.presidentielle,
+        ),
+        nbTours: json['nb_tours'] ?? 2,
+        dateOuverture: DateTime.parse(json['date_ouverture']),
+        dateFermeture: DateTime.parse(json['date_fermeture']),
+        dateResultats: json['date_resultats'] != null
+            ? DateTime.parse(json['date_resultats'])
+            : null,
+        statut: ElectionStatus.values.firstWhere(
+          (e) => (e.name == (json['statut'] ?? 'planifiee') || (e == ElectionStatus.enCours && json['statut'] == 'en_cours')),
+          orElse: () => ElectionStatus.planifiee,
+        ),
+        tourActuel: json['tour_actuel'] ?? 1,
+        descriptionFr: json['description_fr'],
+        descriptionAr: json['description_ar'],
+        isPublic: json['is_public'] ?? true,
+      );
 
   Map<String, dynamic> toJson() => {
-    'id': id, 'titre_fr': titreFr, 'titre_ar': titreAr,
-    'type_election': type.name, 'nb_tours': nbTours,
-    'date_ouverture': dateOuverture.toIso8601String(),
-    'date_fermeture': dateFermeture.toIso8601String(),
-    'statut': statut.name, 'tour_actuel': tourActuel,
-    'is_public': isPublic,
-  };
+        'id': id,
+        'titre_fr': titreFr,
+        'titre_ar': titreAr,
+        'type_election': type.name,
+        'nb_tours': nbTours,
+        'date_ouverture': dateOuverture.toIso8601String(),
+        'date_fermeture': dateFermeture.toIso8601String(),
+        'statut': statut.name,
+        'tour_actuel': tourActuel,
+        'is_public': isPublic,
+      };
 }
 
 // ── candidate.dart ────────────────────────────────────────────────────────────
@@ -183,26 +205,30 @@ class Candidate {
   });
 
   factory Candidate.fromJson(Map<String, dynamic> json) => Candidate(
-    id:             json['id'],
-    electionId:     json['election_id'],
-    numeroCandidat: json['numero_candidat'],
-    nom:            json['nom'],
-    parti:          json['parti'],
-    partiAr:        json['parti_ar'],
-    photoUrl:       json['photo_url'],
-    biographieFr:   json['biographie_fr'],
-    biographieAr:   json['biographie_ar'],
-    programmeUrl:   json['programme_url'],
-    couleurParti:   json['couleur_parti'],
-    tour:           json['tour'] ?? 1,
-    isActive:       json['is_active'] ?? true,
-  );
+        id: json['id'],
+        electionId: json['election_id'],
+        numeroCandidat: json['numero_candidat'],
+        nom: json['nom'],
+        parti: json['parti'],
+        partiAr: json['parti_ar'],
+        photoUrl: json['photo_url'],
+        biographieFr: json['biographie_fr'],
+        biographieAr: json['biographie_ar'],
+        programmeUrl: json['programme_url'],
+        couleurParti: json['couleur_parti'],
+        tour: json['tour'] ?? 1,
+        isActive: json['is_active'] ?? true,
+      );
 
   Map<String, dynamic> toJson() => {
-    'id': id, 'election_id': electionId,
-    'numero_candidat': numeroCandidat, 'nom': nom,
-    'parti': parti, 'tour': tour, 'is_active': isActive,
-  };
+        'id': id,
+        'election_id': electionId,
+        'numero_candidat': numeroCandidat,
+        'nom': nom,
+        'parti': parti,
+        'tour': tour,
+        'is_active': isActive,
+      };
 }
 
 // ── vote.dart ─────────────────────────────────────────────────────────────────
@@ -228,15 +254,15 @@ class VotePayload {
   });
 
   Map<String, dynamic> toJson() => {
-    'voter_hash':   voterHash,
-    'election_id':  electionId,
-    'candidate_id': candidateId,
-    'tour':         tour,
-    'vote_chiffre': voteChiffre,
-    'iv':           iv,
-    'signature':    signature,
-    'recu_hash':    recuHash,
-  };
+        'voter_hash': voterHash,
+        'election_id': electionId,
+        'candidate_id': candidateId,
+        'tour': tour,
+        'vote_chiffre': voteChiffre,
+        'iv': iv,
+        'signature': signature,
+        'recu_hash': recuHash,
+      };
 }
 
 // ── bureau_vote.dart ──────────────────────────────────────────────────────────
@@ -268,47 +294,83 @@ class BureauVote {
   });
 
   factory BureauVote.fromJson(Map<String, dynamic> json) => BureauVote(
-    id:           json['id'],
-    codeBureau:   json['code_bureau'],
-    nom:          json['nom'],
-    communeId:    json['commune_id'],
-    wilayaId:     json['wilaya_id'],
-    adresse:      json['adresse'],
-    latitude:     (json['latitude'] as num).toDouble(),
-    longitude:    (json['longitude'] as num).toDouble(),
-    capacite:     json['capacite'],
-    isAccessible: json['is_accessible'] ?? false,
-    isActif:      json['is_actif'] ?? true,
-  );
+        id: json['id'],
+        codeBureau: json['code_bureau'],
+        nom: json['nom'],
+        communeId: json['commune_id'],
+        wilayaId: json['wilaya_id'],
+        adresse: json['adresse'],
+        latitude: (json['latitude'] as num).toDouble(),
+        longitude: (json['longitude'] as num).toDouble(),
+        capacite: json['capacite'],
+        isAccessible: json['is_accessible'] ?? false,
+        isActif: json['is_actif'] ?? true,
+      );
 }
 
 // ── resultat.dart ─────────────────────────────────────────────────────────────
 class Resultat {
   final String electionId;
   final String candidateId;
+  final String? candidatNom;
   final int tour;
   final int nbVotes;
   final double pourcentage;
-  final bool valideCeni;
+  final bool valide;
   final bool valideCc;
 
   const Resultat({
     required this.electionId,
     required this.candidateId,
+    this.candidatNom,
     required this.tour,
     required this.nbVotes,
     required this.pourcentage,
-    required this.valideCeni,
+    required this.valide,
     required this.valideCc,
   });
 
   factory Resultat.fromJson(Map<String, dynamic> json) => Resultat(
-    electionId:  json['election_id'],
-    candidateId: json['candidate_id'],
-    tour:        json['tour'] ?? 1,
-    nbVotes:     json['nb_votes'] ?? 0,
-    pourcentage: (json['pourcentage'] as num?)?.toDouble() ?? 0.0,
-    valideCeni:  json['valide_ceni'] ?? false,
-    valideCc:    json['valide_cc'] ?? false,
+        electionId: json['election_id'],
+        candidateId: json['candidate_id'],
+        candidatNom: json['candidat_nom'] as String?,
+        tour: json['tour'] ?? 1,
+        nbVotes: json['nb_votes'] ?? 0,
+        pourcentage: (json['pourcentage'] as num?)?.toDouble() ?? 0.0,
+        valide: json['valide'] ?? false,
+        valideCc: json['valide_cc'] ?? false,
+      );
+}
+
+
+class Moughataa {
+  final String id;
+  final String code;
+  final String nomFr;
+  final String nomAr;
+  final String wilayaId;
+
+  const Moughataa({
+    required this.id,
+    required this.code,
+    required this.nomFr,
+    required this.nomAr,
+    required this.wilayaId,
+  });
+
+  factory Moughataa.fromJson(Map<String, dynamic> json) => Moughataa(
+    id:       json['id'] ?? '',
+    code:     json['code'] ?? '',
+    nomFr:    json['nom_fr'] ?? '',
+    nomAr:    json['nom_ar'] ?? '',
+    wilayaId: json['wilaya_id'] ?? '',
   );
+
+  Map<String, dynamic> toJson() => {
+    'id':        id,
+    'code':      code,
+    'nom_fr':    nomFr,
+    'nom_ar':    nomAr,
+    'wilaya_id': wilayaId,
+  };
 }

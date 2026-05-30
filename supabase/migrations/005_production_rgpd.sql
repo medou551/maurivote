@@ -31,7 +31,8 @@ VALUES
   ('elections',     3650, NULL, 'Art. 6(1)(e) - Mission d''intérêt public',
     'Données des élections conservées 10 ans'),
   ('candidates',    3650, NULL, 'Art. 6(1)(e) - Mission d''intérêt public',
-    'Données des candidats conservées 10 ans');
+    'Données des candidats conservées 10 ans')
+ON CONFLICT (table_name) DO NOTHING;
 
 -- ── 2. Procédure d'anonymisation post-élection ────────────────────────────────
 -- À exécuter 30 jours après la proclamation officielle des résultats

@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../main.dart';
@@ -42,19 +42,21 @@ class RealtimeService {
           },
         )
         .subscribe((status, [error]) {
-          if (status == RealtimeSubscribeStatus.subscribed) {
-            debugPrint('Realtime: Connecté au canal résultats_$electionId');
-          } else if (status == RealtimeSubscribeStatus.channelError) {
-            debugPrint('Realtime: Erreur canal — $error');
-          }
-        });
+      if (status == RealtimeSubscribeStatus.subscribed) {
+        debugPrint('Realtime: Connecté au canal résultats_$electionId');
+      } else if (status == RealtimeSubscribeStatus.channelError) {
+        debugPrint('Realtime: Erreur canal — $error');
+      }
+    });
   }
 
   // ─────────────────────────────────────────────────────────────────────────
   // BROADCAST — Écoute les votes en temps réel (comptage live)
   // ─────────────────────────────────────────────────────────────────────────
-  void subscribeToVotesCount(String electionId,
-      {required Function(int) onCount}) {
+  void subscribeToVotesCount(
+    String electionId, {
+    required Function(int) onCount,
+  }) {
     _channel = supabase
         .channel('votes_count_$electionId')
         .onBroadcast(

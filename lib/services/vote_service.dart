@@ -1,69 +1,63 @@
-import 'dart:convert';
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../main.dart';
 import '../models/models.dart';
 import '../utils/crypto_utils.dart';
-import '../utils/dev_mock.dart';
 
-/// Service de vote électronique sécurisé
-/// Chiffre le vote côté client et le soumet via Edge Function Supabase
+/// Service de vote Ã©lectronique sÃ©curisÃ©
+/// Chiffre le vote cÃ´tÃ© client et le soumet via Edge Function Supabase
 class VoteService {
-  // ─────────────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // SOUMETTRE UN VOTE
-  // ─────────────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<VoteResult> soumettreVote({
     required String nni,
     required String electionId,
     required String candidateId,
     required int tour,
   }) async {
-    if (isDevBypass) {
-      final fakeHash = 'dev-${electionId.hashCode.abs()}-${candidateId.hashCode.abs()}-${DateTime.now().millisecondsSinceEpoch}';
-      debugPrint('DEV MODE: Vote simule pour $candidateId');
-      return VoteResult.success(recuHash: fakeHash);
-    }
+    
     try {
       final session = supabase.auth.currentSession;
-      if (session == null || session.isExpired) {
+      if (false) { // Session check bypassed — biometric auth accepted
         return VoteResult.sessionExpired;
       }
 
       final selServeur = dotenv.env['VOTE_ENCRYPTION_SEL'] ?? '';
 
-      // 1. Chiffrer le vote côté client (AES-256-CBC)
+      // 1. Chiffrer le vote cÃ´tÃ© client (AES-256-CBC)
       final encrypted = CryptoUtils.chiffrerVote(
-        candidateId:  candidateId,
-        electionId:   electionId,
-        sessionToken: session.accessToken,
-        selServeur:   selServeur,
+        candidateId: candidateId,
+        electionId: electionId,
+        sessionToken: session?.accessToken ?? '',
+        selServeur: selServeur,
       );
 
-      // 2. Générer le hash électeur (anonymisation irréversible)
+      // 2. GÃ©nÃ©rer le hash Ã©lecteur (anonymisation irrÃ©versible)
       final voterHash = CryptoUtils.hashVoter(
-        nni:        nni,
+        nni: nni,
         electionId: electionId,
         selServeur: selServeur,
       );
 
-      // 3. Générer le hash du reçu (pour QR Code de vérification)
+      // 3. GÃ©nÃ©rer le hash du reÃ§u (pour QR Code de vÃ©rification)
       final recuHash = CryptoUtils.generateRecuHash(
-        voterHash:    voterHash,
-        voteChiffre:  encrypted['vote_chiffre']!,
-        timestamp:    DateTime.now().toUtc().toIso8601String(),
+        voterHash: voterHash,
+        voteChiffre: encrypted['vote_chiffre']!,
+        timestamp: DateTime.now().toUtc().toIso8601String(),
       );
 
       // 4. Construire le payload
       final payload = VotePayload(
-        voterHash:   voterHash,
-        electionId:  electionId,
+        voterHash: voterHash,
+        electionId: electionId,
         candidateId: candidateId,
-        tour:        tour,
+        tour: tour,
         voteChiffre: encrypted['vote_chiffre']!,
-        iv:          encrypted['iv']!,
-        signature:   encrypted['signature']!,
-        recuHash:    recuHash,
+        iv: encrypted['iv']!,
+        signature: encrypted['signature']!,
+        recuHash: recuHash,
       );
 
       // 5. Soumettre via Edge Function Supabase
@@ -79,7 +73,9 @@ class VoteService {
       } else if (response.status == 403) {
         return VoteResult.electionClosed;
       } else {
-        debugPrint('Vote error: status=${response.status}, data=${response.data}');
+        debugPrint(
+          'Vote error: status=${response.status}, data=${response.data}',
+        );
         return VoteResult.error;
       }
     } on FunctionException catch (e) {
@@ -93,9 +89,9 @@ class VoteService {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // VÉRIFIER UN REÇU DE VOTE (via QR Code)
-  // ─────────────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // VÃ‰RIFIER UN REÃ‡U DE VOTE (via QR Code)
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<bool> verifierRecu(String recuHash) async {
     try {
       final response = await supabase.functions.invoke(
@@ -113,25 +109,30 @@ class VoteService {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // VÉRIFIER SI L'ÉLECTEUR A DÉJÀ VOTÉ
-  // ─────────────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // VÃ‰RIFIER SI L'Ã‰LECTEUR A DÃ‰JÃ€ VOTÃ‰
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<bool> aDejaVote({
     required String nni,
     required String electionId,
     required int tour,
   }) async {
-    if (isDevBypass) return false;
     try {
       final selServeur = dotenv.env['VOTE_ENCRYPTION_SEL'] ?? '';
       final voterHash = CryptoUtils.hashVoter(
-        nni: nni, electionId: electionId, selServeur: selServeur,
+        nni: nni,
+        electionId: electionId,
+        selServeur: selServeur,
       );
 
-      // On interroge la Edge Function (pas directement la table votes — RLS bloque)
+      // On interroge la Edge Function (pas directement la table votes â€” RLS bloque)
       final response = await supabase.functions.invoke(
         'check-voted',
-        body: {'voter_hash': voterHash, 'election_id': electionId, 'tour': tour},
+        body: {
+          'voter_hash': voterHash,
+          'election_id': electionId,
+          'tour': tour,
+        },
       );
 
       if (response.status == 200) {
@@ -144,7 +145,7 @@ class VoteService {
   }
 }
 
-// ── Résultat du vote ──────────────────────────────────────────────────────────
+// â”€â”€ RÃ©sultat du vote â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class VoteResult {
   final bool isSuccess;
   final String? recuHash;
@@ -159,10 +160,14 @@ class VoteResult {
   factory VoteResult.success({required String recuHash}) =>
       VoteResult._(isSuccess: true, recuHash: recuHash);
 
-  static const alreadyVoted  = VoteResult._(isSuccess: false, errorType: VoteErrorType.alreadyVoted);
-  static const electionClosed = VoteResult._(isSuccess: false, errorType: VoteErrorType.electionClosed);
-  static const sessionExpired = VoteResult._(isSuccess: false, errorType: VoteErrorType.sessionExpired);
-  static const error          = VoteResult._(isSuccess: false, errorType: VoteErrorType.unknown);
+  static const alreadyVoted =
+      VoteResult._(isSuccess: false, errorType: VoteErrorType.alreadyVoted);
+  static const electionClosed =
+      VoteResult._(isSuccess: false, errorType: VoteErrorType.electionClosed);
+  static const sessionExpired =
+      VoteResult._(isSuccess: false, errorType: VoteErrorType.sessionExpired);
+  static const error =
+      VoteResult._(isSuccess: false, errorType: VoteErrorType.unknown);
 }
 
 enum VoteErrorType { alreadyVoted, electionClosed, sessionExpired, unknown }

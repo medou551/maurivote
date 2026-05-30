@@ -1,23 +1,94 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shimmer/shimmer.dart';
-import 'package:url_launcher/url_launcher.dart';
-import '../../models/models.dart';
+import '../../main.dart';
 import '../../utils/app_theme.dart';
-import '../../utils/constants.dart';
 import '../../viewmodels/auth_viewmodel.dart';
+import '../../app.dart';
+import 'package:go_router/go_router.dart';
 
-// ══════════════════════════════════════════════════════════════════════════════
-// PROFIL SCREEN
-// ══════════════════════════════════════════════════════════════════════════════
-class ProfilScreen extends ConsumerWidget {
+class ProfilScreen extends ConsumerStatefulWidget {
   const ProfilScreen({super.key});
+  @override
+  ConsumerState<ProfilScreen> createState() => _ProfilScreenState();
+}
+
+class _ProfilScreenState extends ConsumerState<ProfilScreen> {
+  Map<String, dynamic>? _voter;
+  List<Map<String, dynamic>> _votes = [];
+  bool _loading = true;
+  bool _nniVisible = false;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final voterAsync = ref.watch(currentVoterProvider);
+  void initState() {
+    super.initState();
+    _load();
+  }
 
+  String _maskNni(String nni) {
+    if (nni.length < 6) return nni;
+    return nni.substring(0, 3) + '****' + nni.substring(nni.length - 3);
+  }
+
+  Future<void> _load() async {
+    try {
+      final nni = await ref.read(authServiceProvider).getCurrentNni();
+      if (nni == null || nni.isEmpty) {
+        if (mounted) setState(() => _loading = false);
+        return;
+      }
+      final voterData = await supabase
+          .from('voters')
+          .select('*')
+          .eq('nni', nni)
+          .maybeSingle();
+      if (voterData == null) {
+        if (mounted) setState(() => _loading = false);
+        return;
+      }
+      final votesData = await supabase
+          .from('votes')
+          .select(
+              'id, timestamp_vote, election_id, recu_hash, is_valid, elections(titre_fr)')
+          .eq('voter_hash', voterData['id'].toString())
+          .order('timestamp_vote', ascending: false);
+      if (mounted)
+        setState(() {
+          _voter = Map<String, dynamic>.from(voterData);
+          _votes = List<Map<String, dynamic>>.from(votesData as List);
+          _loading = false;
+        });
+    } catch (e) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _signOut() async {
+    final ok = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+                title: const Text('Deconnexion'),
+                content: const Text('Voulez-vous vous deconnecter ?'),
+                actions: [
+                  TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Annuler')),
+                  ElevatedButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white),
+                      child: const Text('Deconnecter')),
+                ]));
+    if (ok == true && mounted) {
+      await ref.read(authStateProvider.notifier).signOut();
+      if (mounted) context.go('/login');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.backgroundWhite,
       appBar: AppBar(
@@ -26,327 +97,336 @@ class ProfilScreen extends ConsumerWidget {
         foregroundColor: Colors.white,
         centerTitle: true,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.logout_outlined),
-            tooltip: 'Déconnexion',
-            onPressed: () => _confirmSignOut(context, ref),
-          ),
+          IconButton(icon: const Icon(Icons.logout), onPressed: _signOut),
         ],
       ),
-      body: voterAsync.when(
-        loading: () => _buildShimmer(),
-        error: (e, _) => _buildError(context, ref),
-        data: (voter) => voter == null
-            ? _buildError(context, ref)
-            : _ProfilBody(voter: voter),
-      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _voter == null
+              ? _buildNotFound()
+              : RefreshIndicator(
+                  onRefresh: _load,
+                  child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.all(16),
+                      child: Column(children: [
+                        _buildAvatar(),
+                        const SizedBox(height: 24),
+                        _buildInfosCard(),
+                        const SizedBox(height: 16),
+                        _buildStatutCard(),
+                        const SizedBox(height: 16),
+                        _buildVotesCard(),
+                        const SizedBox(height: 16),
+                        _buildSecuriteCard(),
+                        const SizedBox(height: 16),
+                        _buildCarteCard(),
+                        const SizedBox(height: 24),
+                      ]))),
     );
   }
 
-  Widget _buildShimmer() => Shimmer.fromColors(
-    baseColor: Colors.grey.shade200,
-    highlightColor: Colors.grey.shade50,
-    child: Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(children: [
-        const CircleAvatar(radius: 48, backgroundColor: Colors.white),
-        const SizedBox(height: 16),
-        ...List.generate(5, (_) => Container(
-          height: 60, margin: const EdgeInsets.only(bottom: 10),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-        )),
-      ]),
-    ),
-  );
-
-  Widget _buildError(BuildContext ctx, WidgetRef ref) => Center(
-    child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-      const Icon(Icons.error_outline, size: 48, color: AppTheme.textSecondary),
-      const SizedBox(height: 12),
-      const Text('Impossible de charger le profil'),
-      const SizedBox(height: 16),
-      ElevatedButton(
-        onPressed: () => ref.invalidate(currentVoterProvider),
-        child: const Text('Réessayer'),
-      ),
-    ]),
-  );
-
-  Future<void> _confirmSignOut(BuildContext ctx, WidgetRef ref) async {
-    final ok = await showDialog<bool>(
-      context: ctx,
-      builder: (_) => AlertDialog(
-        title: const Text('Déconnexion'),
-        content: const Text('Voulez-vous vous déconnecter de MauriVote ?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Annuler')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorRed),
-            child: const Text('Déconnexion'),
-          ),
-        ],
-      ),
-    );
-    if (ok == true && ctx.mounted) {
-      await ref.read(authStateProvider.notifier).signOut();
-      if (ctx.mounted) ctx.go('/login');
-    }
-  }
-}
-
-class _ProfilBody extends StatelessWidget {
-  final Voter voter;
-  const _ProfilBody({required this.voter});
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(children: [
-        // ── Avatar ────────────────────────────────────────────────────────
-        CircleAvatar(
-          radius: 50,
-          backgroundColor: AppTheme.lightGreen,
-          child: Text(voter.prenom[0].toUpperCase(),
-              style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold,
-                  color: AppTheme.primaryGreen)),
-        ),
-        const SizedBox(height: 12),
-        Text(voter.nomComplet,
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 4),
-        Text(voter.nniMasque,
-            style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary,
-                letterSpacing: 2)),
-        const SizedBox(height: 4),
-        // Badge vérifié
-        if (voter.isVerified)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-            decoration: BoxDecoration(
-              color: AppTheme.lightGreen, borderRadius: BorderRadius.circular(20)),
-            child: const Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.verified, size: 14, color: AppTheme.primaryGreen),
-              SizedBox(width: 4),
-              Text('Électeur vérifié', style: TextStyle(fontSize: 12,
-                  color: AppTheme.primaryGreen, fontWeight: FontWeight.w600)),
-            ]),
-          ),
-        const SizedBox(height: 24),
-
-        // ── Informations personnelles ──────────────────────────────────────
-        _Section(
-          title: 'Informations personnelles',
-          children: [
-            _InfoTile(Icons.badge_outlined, 'NNI', voter.nniMasque),
-            _InfoTile(Icons.cake_outlined, 'Date de naissance',
-                _formatDate(voter.dateNaissance)),
-            _InfoTile(Icons.person_outline, 'Sexe',
-                voter.sexe == 'M' ? 'Masculin' : 'Féminin'),
-            _InfoTile(Icons.phone_outlined, 'Téléphone',
-                _maskPhone(voter.telephone)),
-          ],
-        ),
-        const SizedBox(height: 16),
-
-        // ── Informations électorales ────────────────────────────────────────
-        _Section(
-          title: 'Informations électorales',
-          children: [
-            _InfoTile(Icons.location_city_outlined, 'Commune', 'Tevragh-Zeina'),
-            _InfoTile(Icons.map_outlined, 'Wilaya', 'Nouakchott Ouest'),
-            _ActionTile(
-              icon: Icons.place_outlined,
-              label: 'Mon bureau de vote',
-              value: 'Voir sur la carte',
-              onTap: () => context.go('/profil/bureau'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-
-        // ── Paramètres ─────────────────────────────────────────────────────
-        _Section(
-          title: 'Paramètres',
-          children: [
-            _ActionTile(
-              icon: Icons.language_outlined,
-              label: 'Langue',
-              value: 'Français',
-              onTap: () {/* Sprint 3 */},
-            ),
-            _ActionTile(
-              icon: Icons.help_outline,
-              label: 'Aide & Contact CENI',
-              value: AppConstants.ceniPhone,
-              onTap: () => launchUrl(Uri.parse('tel:${AppConstants.ceniPhone}')),
-            ),
-            _ActionTile(
-              icon: Icons.open_in_new_outlined,
-              label: 'Site CENI',
-              value: 'myceni.org',
-              onTap: () => launchUrl(Uri.parse(AppConstants.ceniWebsite)),
-            ),
-          ],
-        ),
-        const SizedBox(height: 32),
-
-        // ── Version ────────────────────────────────────────────────────────
-        const Text('MauriVote v1.0.0 — © 2026 CENI Mauritanie',
-            style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
-      ]),
-    );
-  }
-
-  String _formatDate(DateTime d) =>
-      '${d.day.toString().padLeft(2,'0')}/${d.month.toString().padLeft(2,'0')}/${d.year}';
-
-  String _maskPhone(String p) =>
-      p.length > 6 ? '${p.substring(0, p.length - 4)}****' : p;
-}
-
-class _Section extends StatelessWidget {
-  final String title;
-  final List<Widget> children;
-  const _Section({required this.title, required this.children});
-
-  @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold,
-          color: AppTheme.textSecondary, letterSpacing: 0.5)),
-      const SizedBox(height: 8),
+  Widget _buildAvatar() {
+    final nom = _voter?['nom'] ?? '';
+    final prenom = _voter?['prenom'] ?? '';
+    final initiale = prenom.isNotEmpty ? prenom[0].toUpperCase() : '?';
+    return Column(children: [
       Container(
-        decoration: BoxDecoration(color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04),
-                blurRadius: 8, offset: const Offset(0, 2))]),
-        child: Column(children: children),
-      ),
-    ],
-  );
-}
-
-class _InfoTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  const _InfoTile(this.icon, this.label, this.value);
-
-  @override
-  Widget build(BuildContext context) => ListTile(
-    leading: Icon(icon, color: AppTheme.primaryGreen, size: 22),
-    title: Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
-    subtitle: Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
-    dense: true,
-  );
-}
-
-class _ActionTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final VoidCallback onTap;
-  const _ActionTile({required this.icon, required this.label,
-      required this.value, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) => ListTile(
-    leading: Icon(icon, color: AppTheme.primaryGreen, size: 22),
-    title: Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
-    subtitle: Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500,
-        color: AppTheme.primaryGreen)),
-    trailing: const Icon(Icons.chevron_right, color: AppTheme.textSecondary),
-    onTap: onTap,
-    dense: true,
-  );
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// BUREAU VOTE SCREEN
-// ══════════════════════════════════════════════════════════════════════════════
-class BureauVoteScreen extends StatelessWidget {
-  const BureauVoteScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mon Bureau de Vote'),
-        backgroundColor: AppTheme.primaryGreen,
-        foregroundColor: Colors.white,
-      ),
-      body: Column(
-        children: [
-          // Placeholder carte (Google Maps — Sprint 2 J12)
-          Container(
-            height: 300,
-            color: Colors.grey.shade200,
-            child: const Center(
-              child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Icon(Icons.map_outlined, size: 64, color: AppTheme.textSecondary),
-                SizedBox(height: 8),
-                Text('Carte Google Maps', style: TextStyle(color: AppTheme.textSecondary)),
-                Text('(Intégration Sprint 2 — J12)',
-                    style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+          width: 90,
+          height: 90,
+          decoration: BoxDecoration(
+              color: AppTheme.primaryGreen,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                    color: AppTheme.primaryGreen.withOpacity(0.3),
+                    blurRadius: 15,
+                    offset: const Offset(0, 5))
               ]),
-            ),
-          ),
-
-          // Infos bureau
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Votre bureau de vote assigné',
-                  style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white, borderRadius: BorderRadius.circular(14),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05),
-                      blurRadius: 8)],
-                ),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('École Tevragh-Zeina A',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
-                  const Text('Rue des Ambassades, Tevragh-Zeina',
-                      style: TextStyle(color: AppTheme.textSecondary)),
-                  const SizedBox(height: 8),
-                  Row(children: [
-                    const Icon(Icons.schedule, size: 14, color: AppTheme.textSecondary),
-                    const SizedBox(width: 4),
-                    const Text('Horaires : 07h00 — 19h00',
-                        style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
-                    const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppTheme.lightGreen, borderRadius: BorderRadius.circular(12)),
-                      child: const Text('Accessible PMR',
-                          style: TextStyle(fontSize: 11, color: AppTheme.primaryGreen)),
-                    ),
-                  ]),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () => launchUrl(
-                        Uri.parse('https://maps.google.com/?q=18.0735,-15.9582')),
-                      icon: const Icon(Icons.directions, size: 18),
-                      label: const Text('Itinéraire Google Maps'),
-                    ),
-                  ),
-                ]),
-              ),
-            ]),
-          ),
-        ],
-      ),
-    );
+          child: Center(
+              child: Text(initiale,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold)))),
+      const SizedBox(height: 12),
+      Text('$prenom $nom',
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+      const SizedBox(height: 4),
+      const Text('Electeur enregistre',
+          style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+    ]);
   }
+
+  Widget _buildInfosCard() {
+    final nni = _voter?['nni'] ?? '';
+    return _card('Informations personnelles', Icons.person, [
+      _row(
+          Icons.badge_outlined,
+          'NNI',
+          Row(children: [
+            Text(_nniVisible ? nni : _maskNni(nni),
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold, fontFamily: 'monospace')),
+            const SizedBox(width: 8),
+            GestureDetector(
+                onTap: () => setState(() => _nniVisible = !_nniVisible),
+                child: Icon(
+                    _nniVisible
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                    size: 18,
+                    color: AppTheme.primaryGreen)),
+            const SizedBox(width: 4),
+            GestureDetector(
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: nni));
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('NNI copie !'),
+                      backgroundColor: AppTheme.primaryGreen,
+                      behavior: SnackBarBehavior.floating,
+                      duration: Duration(seconds: 2)));
+                },
+                child: const Icon(Icons.copy,
+                    size: 16, color: AppTheme.textSecondary)),
+          ])),
+      _row(
+          Icons.person_outline,
+          'Nom',
+          Text('${_voter?['prenom'] ?? ''} ${_voter?['nom'] ?? ''}',
+              style: const TextStyle(fontWeight: FontWeight.bold))),
+      _row(
+          Icons.cake_outlined,
+          'Date de naissance',
+          Text(_voter?['date_naissance'] ?? '-',
+              style: const TextStyle(fontWeight: FontWeight.bold))),
+      _row(
+          Icons.wc_outlined,
+          'Sexe',
+          Text(_voter?['sexe'] == 'M' ? 'Masculin' : 'Feminin',
+              style: const TextStyle(fontWeight: FontWeight.bold))),
+      _row(
+          Icons.phone_outlined,
+          'Telephone',
+          Text(_voter?['telephone'] ?? '-',
+              style: const TextStyle(fontWeight: FontWeight.bold))),
+    ]);
+  }
+
+  Widget _buildStatutCard() {
+    final isVerified = _voter?['is_verified'] == true;
+    final kycDone = _voter?['kyc_completed'] == true;
+    final basma = _voter?['basma_verified'] == true;
+    final accountType = _voter?['account_type'] ?? 'user';
+    return _card('Statut du compte', Icons.verified_user, [
+      _statusRow('Compte verifie', isVerified),
+      _statusRow('KYC complete (CNI)', kycDone),
+      _statusRow('Biometrie (Basma)', basma),
+      _row(
+          Icons.admin_panel_settings_outlined,
+          'Type de compte',
+          Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+              decoration: BoxDecoration(
+                  color: accountType == 'admin'
+                      ? Colors.red.shade50
+                      : AppTheme.lightGreen.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(20)),
+              child: Text(
+                  accountType == 'admin' ? 'Administrateur' : 'Electeur',
+                  style: TextStyle(
+                      color: accountType == 'admin'
+                          ? Colors.red
+                          : AppTheme.primaryGreen,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12)))),
+    ]);
+  }
+
+  Widget _buildVotesCard() {
+    return _card('Historique des votes', Icons.history, [
+      if (_votes.isEmpty)
+        const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(
+                child: Text('Aucun vote enregistre',
+                    style: TextStyle(color: AppTheme.textSecondary))))
+      else
+        ..._votes.map((v) {
+          final election = v['elections'];
+          final titre = election?['titre_fr'] ?? 'Election';
+          final date =
+              (v['timestamp_vote'] ?? v['created_at'] ?? '').toString();
+          final dateStr = date.length >= 10 ? date.substring(0, 10) : '';
+          final isValid = v['is_valid'] == true;
+          return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(children: [
+                Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                        color: isValid
+                            ? AppTheme.primaryGreen.withOpacity(0.1)
+                            : Colors.orange.shade50,
+                        shape: BoxShape.circle),
+                    child: Icon(
+                        isValid ? Icons.how_to_vote : Icons.warning_outlined,
+                        color: isValid ? AppTheme.primaryGreen : Colors.orange,
+                        size: 20)),
+                const SizedBox(width: 12),
+                Expanded(
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                      Text(titre,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 13)),
+                      Text(dateStr,
+                          style: const TextStyle(
+                              color: AppTheme.textSecondary, fontSize: 11)),
+                    ])),
+                Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                        color: isValid ? AppTheme.primaryGreen : Colors.orange,
+                        borderRadius: BorderRadius.circular(20)),
+                    child: Text(isValid ? 'Valide' : 'Annule',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold))),
+              ]));
+        }),
+    ]);
+  }
+
+  Widget _buildLangueCard() {
+    return _card('Langue / اللغة', Icons.language, [
+      Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
+        ElevatedButton(
+            onPressed: () =>
+                ref.read(localeProvider.notifier).setLocale(const Locale('fr')),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF006233),
+                foregroundColor: Colors.white),
+            child: const Text('Francais')),
+        ElevatedButton(
+            onPressed: () =>
+                ref.read(localeProvider.notifier).setLocale(const Locale('ar')),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFB8860B),
+                foregroundColor: Colors.white),
+            child: const Text('العربية')),
+      ]),
+    ]);
+  }
+
+  Widget _buildSecuriteCard() {
+    return _card('Securite', Icons.security, [
+      _row(
+          Icons.fingerprint,
+          'Biometrie',
+          const Text('Activee',
+              style: TextStyle(
+                  color: AppTheme.primaryGreen, fontWeight: FontWeight.bold))),
+      _row(Icons.lock_outline, 'Chiffrement',
+          const Text('AES-256', style: TextStyle(fontWeight: FontWeight.bold))),
+      _row(
+          Icons.shield_outlined,
+          'Protection',
+          const Text('CENI certifie',
+              style: TextStyle(fontWeight: FontWeight.bold))),
+      const SizedBox(height: 8),
+      SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+              onPressed: _signOut,
+              icon: const Icon(Icons.logout, color: Colors.red),
+              label: const Text('Se deconnecter',
+                  style: TextStyle(color: Colors.red)),
+              style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.red)))),
+    ]);
+  }
+
+  Widget _card(String title, IconData icon, List<Widget> children) => Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.grey.withOpacity(0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 2))
+          ]),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(icon, color: AppTheme.primaryGreen, size: 20),
+          const SizedBox(width: 8),
+          Text(title,
+              style:
+                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        ]),
+        const SizedBox(height: 16),
+        ...children,
+      ]));
+
+  Widget _row(IconData icon, String label, Widget value) => Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(children: [
+        Icon(icon, size: 18, color: AppTheme.textSecondary),
+        const SizedBox(width: 10),
+        Text(label,
+            style:
+                const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+        const Spacer(),
+        value,
+      ]));
+
+  Widget _statusRow(String label, bool done) => Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(children: [
+        Icon(done ? Icons.check_circle : Icons.cancel,
+            color: done ? AppTheme.primaryGreen : Colors.grey, size: 20),
+        const SizedBox(width: 10),
+        Text(label,
+            style: TextStyle(
+                color: done ? Colors.black : Colors.grey, fontSize: 13)),
+        const Spacer(),
+        Text(done ? 'Oui' : 'Non',
+            style: TextStyle(
+                color: done ? AppTheme.primaryGreen : Colors.grey,
+                fontWeight: FontWeight.bold,
+                fontSize: 12)),
+      ]));
+
+  Widget _buildCarteCard() => _card('Mon Bureau de Vote', Icons.map, [
+        const Text('Trouvez votre bureau de vote le plus proche',
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+        const SizedBox(height: 12),
+        ElevatedButton.icon(
+            onPressed: () => context.push('/profil/bureau'),
+            icon: const Icon(Icons.map_outlined),
+            label: const Text('Voir la carte des bureaux'),
+            style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 46),
+                backgroundColor: const Color(0xFF006233),
+                foregroundColor: Colors.white)),
+      ]);
+
+  Widget _buildNotFound() => Center(
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        const Icon(Icons.person_off, size: 64, color: Colors.grey),
+        const SizedBox(height: 16),
+        const Text('Profil introuvable', style: TextStyle(fontSize: 16)),
+        const SizedBox(height: 24),
+        ElevatedButton.icon(
+            onPressed: () => context.go('/login'),
+            icon: const Icon(Icons.login),
+            label: const Text('Se connecter')),
+      ]));
 }

@@ -1,5 +1,5 @@
-package com.example.maurivote
+﻿package com.example.maurivote
 
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 
-class MainActivity : FlutterActivity()
+class MainActivity: FlutterFragmentActivity()

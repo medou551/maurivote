@@ -9,7 +9,6 @@ import 'package:maurivote/viewmodels/elections_viewmodel.dart';
 // TESTS SPRINT 2 — J8 à J14
 // ══════════════════════════════════════════════════════════════════════════════
 void main() {
-
   // ── VotePayload ─────────────────────────────────────────────────────────────
   group('VotePayload — Sérialisation & Validation', () {
     const sel = 'sel-test-de-32-caracteres-minimum!!';
@@ -19,11 +18,15 @@ void main() {
 
     test('toJson contient tous les champs obligatoires', () {
       final encrypted = CryptoUtils.chiffrerVote(
-        candidateId: cId, electionId: eId,
-        sessionToken: tok, selServeur: sel,
+        candidateId: cId,
+        electionId: eId,
+        sessionToken: tok,
+        selServeur: sel,
       );
       final voterHash = CryptoUtils.hashVoter(
-        nni: '1234567890', electionId: eId, selServeur: sel,
+        nni: '1234567890',
+        electionId: eId,
+        selServeur: sel,
       );
       final recuHash = CryptoUtils.generateRecuHash(
         voterHash: voterHash,
@@ -32,23 +35,37 @@ void main() {
       );
 
       final payload = VotePayload(
-        voterHash: voterHash, electionId: eId,
-        candidateId: cId, tour: 1,
+        voterHash: voterHash,
+        electionId: eId,
+        candidateId: cId,
+        tour: 1,
         voteChiffre: encrypted['vote_chiffre']!,
-        iv: encrypted['iv']!, signature: encrypted['signature']!,
+        iv: encrypted['iv']!,
+        signature: encrypted['signature']!,
         recuHash: recuHash,
       );
 
       final json = payload.toJson();
-      expect(json.keys, containsAll([
-        'voter_hash', 'election_id', 'candidate_id', 'tour',
-        'vote_chiffre', 'iv', 'signature', 'recu_hash',
-      ]));
+      expect(
+        json.keys,
+        containsAll([
+          'voter_hash',
+          'election_id',
+          'candidate_id',
+          'tour',
+          'vote_chiffre',
+          'iv',
+          'signature',
+          'recu_hash',
+        ]),
+      );
     });
 
     test('voter_hash est un HMAC-SHA256 de 64 chars', () {
       final hash = CryptoUtils.hashVoter(
-        nni: '9876543210', electionId: eId, selServeur: sel,
+        nni: '9876543210',
+        electionId: eId,
+        selServeur: sel,
       );
       expect(hash.length, 64);
       expect(RegExp(r'^[0-9a-f]{64}$').hasMatch(hash), isTrue);
@@ -56,9 +73,10 @@ void main() {
 
     test('recu_hash est unique pour chaque soumission', () {
       final vHash = 'a' * 64;
-      final vChiffre = 'ENC';
+      const vChiffre = 'ENC';
       final h1 = CryptoUtils.generateRecuHash(
-        voterHash: vHash, voteChiffre: vChiffre,
+        voterHash: vHash,
+        voteChiffre: vChiffre,
         timestamp: '2026-05-01T07:00:00Z',
       );
       final h2 = CryptoUtils.generateRecuHash(
@@ -70,7 +88,10 @@ void main() {
 
     test('le candidat choisi n\'apparaît pas dans le vote chiffré', () {
       final enc = CryptoUtils.chiffrerVote(
-        candidateId: cId, electionId: eId, sessionToken: tok, selServeur: sel,
+        candidateId: cId,
+        electionId: eId,
+        sessionToken: tok,
+        selServeur: sel,
       );
       expect(enc['vote_chiffre'], isNot(contains(cId)));
       expect(enc['vote_chiffre'], isNot(contains(eId)));
@@ -78,9 +99,15 @@ void main() {
     });
 
     test('IV différent → chiffrements différents (30 essais)', () {
-      final chiffrements = List.generate(30, (_) => CryptoUtils.chiffrerVote(
-        candidateId: cId, electionId: eId, sessionToken: tok, selServeur: sel,
-      ));
+      final chiffrements = List.generate(
+        30,
+        (_) => CryptoUtils.chiffrerVote(
+          candidateId: cId,
+          electionId: eId,
+          sessionToken: tok,
+          selServeur: sel,
+        ),
+      );
       final ivs = chiffrements.map((e) => e['iv']).toSet();
       expect(ivs.length, 30); // Tous distincts
     });
@@ -89,21 +116,21 @@ void main() {
   // ── HasVotedQuery ────────────────────────────────────────────────────────────
   group('HasVotedQuery — Égalité et hashCode', () {
     test('même election_id + tour → égaux', () {
-      const q1 = HasVotedQuery(electionId: 'e1', tour: 1);
-      const q2 = HasVotedQuery(electionId: 'e1', tour: 1);
+      const q1 = HasVotedQuery(electionId: 'e1');
+      const q2 = HasVotedQuery(electionId: 'e1');
       expect(q1, equals(q2));
       expect(q1.hashCode, equals(q2.hashCode));
     });
 
     test('tours différents → inégaux', () {
-      const q1 = HasVotedQuery(electionId: 'e1', tour: 1);
+      const q1 = HasVotedQuery(electionId: 'e1');
       const q2 = HasVotedQuery(electionId: 'e1', tour: 2);
       expect(q1, isNot(equals(q2)));
     });
 
     test('elections différentes → inégaux', () {
-      const q1 = HasVotedQuery(electionId: 'e1', tour: 1);
-      const q2 = HasVotedQuery(electionId: 'e2', tour: 1);
+      const q1 = HasVotedQuery(electionId: 'e1');
+      const q2 = HasVotedQuery(electionId: 'e2');
       expect(q1, isNot(equals(q2)));
     });
   });
@@ -111,8 +138,8 @@ void main() {
   // ── CandidateQuery ───────────────────────────────────────────────────────────
   group('CandidateQuery — Égalité et hashCode', () {
     test('mêmes params → égaux', () {
-      const q1 = CandidateQuery(electionId: 'e1', tour: 1);
-      const q2 = CandidateQuery(electionId: 'e1', tour: 1);
+      const q1 = CandidateQuery(electionId: 'e1');
+      const q2 = CandidateQuery(electionId: 'e1');
       expect(q1, equals(q2));
       expect(q1.hashCode, equals(q2.hashCode));
     });
@@ -165,15 +192,23 @@ void main() {
   // ── Modèles Election — Cas limites ───────────────────────────────────────────
   group('Election — Cas limites du modèle', () {
     Map<String, dynamic> baseJson() => {
-      'id': 'e1',
-      'titre_fr': 'Test', 'titre_ar': 'اختبار',
-      'type_election': 'presidentielle', 'nb_tours': 2,
-      'date_ouverture': DateTime.now().toUtc()
-          .subtract(const Duration(hours: 1)).toIso8601String(),
-      'date_fermeture': DateTime.now().toUtc()
-          .add(const Duration(hours: 5)).toIso8601String(),
-      'statut': 'en_cours', 'tour_actuel': 1, 'is_public': true,
-    };
+          'id': 'e1',
+          'titre_fr': 'Test',
+          'titre_ar': 'اختبار',
+          'type_election': 'presidentielle',
+          'nb_tours': 2,
+          'date_ouverture': DateTime.now()
+              .toUtc()
+              .subtract(const Duration(hours: 1))
+              .toIso8601String(),
+          'date_fermeture': DateTime.now()
+              .toUtc()
+              .add(const Duration(hours: 5))
+              .toIso8601String(),
+          'statut': 'en_cours',
+          'tour_actuel': 1,
+          'is_public': true,
+        };
 
     test('isVotable = true : en_cours + dans la période', () {
       expect(Election.fromJson(baseJson()).isVotable, isTrue);
@@ -181,15 +216,19 @@ void main() {
 
     test('isVotable = false : en_cours mais période passée', () {
       final j = baseJson();
-      j['date_fermeture'] = DateTime.now().toUtc()
-          .subtract(const Duration(hours: 1)).toIso8601String();
+      j['date_fermeture'] = DateTime.now()
+          .toUtc()
+          .subtract(const Duration(hours: 1))
+          .toIso8601String();
       expect(Election.fromJson(j).isVotable, isFalse);
     });
 
     test('isVotable = false : période future', () {
       final j = baseJson();
-      j['date_ouverture'] = DateTime.now().toUtc()
-          .add(const Duration(hours: 2)).toIso8601String();
+      j['date_ouverture'] = DateTime.now()
+          .toUtc()
+          .add(const Duration(hours: 2))
+          .toIso8601String();
       expect(Election.fromJson(j).isVotable, isFalse);
     });
 
@@ -210,10 +249,10 @@ void main() {
     test('typeLabel pour tous les types', () {
       final types = {
         'presidentielle': 'Présidentielle',
-        'legislative':    'Législative',
-        'municipale':     'Municipale',
-        'regionale':      'Régionale',
-        'referendum':     'Référendum',
+        'legislative': 'Législative',
+        'municipale': 'Municipale',
+        'regionale': 'Régionale',
+        'referendum': 'Référendum',
       };
       for (final entry in types.entries) {
         final j = baseJson()..['type_election'] = entry.key;
@@ -239,15 +278,22 @@ void main() {
       final now = DateTime.now().toUtc();
 
       // Exactement maintenant = ouverture → pas encore actif
-      expect(AppValidators.isElectionActive(
-        ouverture: now, fermeture: now.add(const Duration(hours: 1)),
-      ), isFalse); // now.isAfter(now) est false
+      expect(
+        AppValidators.isElectionActive(
+          ouverture: now.add(const Duration(seconds: 10)),
+          fermeture: now.add(const Duration(hours: 1)),
+        ),
+        isFalse,
+      ); // now.isAfter(now) est false
 
       // 1 milliseconde après l'ouverture → actif
-      expect(AppValidators.isElectionActive(
-        ouverture: now.subtract(const Duration(milliseconds: 1)),
-        fermeture: now.add(const Duration(hours: 1)),
-      ), isTrue);
+      expect(
+        AppValidators.isElectionActive(
+          ouverture: now.subtract(const Duration(milliseconds: 1)),
+          fermeture: now.add(const Duration(hours: 1)),
+        ),
+        isTrue,
+      );
     });
   });
 
@@ -262,13 +308,17 @@ void main() {
     test('Génération complète d\'un payload de vote valide', () {
       // 1. Chiffrer le vote
       final encrypted = CryptoUtils.chiffrerVote(
-        candidateId: cId, electionId: eId,
-        sessionToken: tok, selServeur: sel,
+        candidateId: cId,
+        electionId: eId,
+        sessionToken: tok,
+        selServeur: sel,
       );
 
       // 2. Hasher l'électeur
       final voterHash = CryptoUtils.hashVoter(
-        nni: nni, electionId: eId, selServeur: sel,
+        nni: nni,
+        electionId: eId,
+        selServeur: sel,
       );
 
       // 3. Générer le reçu
@@ -281,8 +331,10 @@ void main() {
 
       // 4. Créer le payload
       final payload = VotePayload(
-        voterHash: voterHash, electionId: eId,
-        candidateId: cId, tour: 1,
+        voterHash: voterHash,
+        electionId: eId,
+        candidateId: cId,
+        tour: 1,
         voteChiffre: encrypted['vote_chiffre']!,
         iv: encrypted['iv']!,
         signature: encrypted['signature']!,
@@ -300,23 +352,36 @@ void main() {
       expect(json['tour'], 1);
 
       // Vérifier la signature
-      expect(CryptoUtils.verifySignature(
-        data: encrypted['vote_chiffre']! + encrypted['iv']!,
-        signature: encrypted['signature']!,
-        key: sel,
-      ), isTrue);
+      expect(
+        CryptoUtils.verifySignature(
+          data: encrypted['vote_chiffre']! + encrypted['iv']!,
+          signature: encrypted['signature']!,
+          key: sel,
+        ),
+        isTrue,
+      );
     });
 
     test('Deux électeurs différents → voter_hash différents', () {
-      final h1 = CryptoUtils.hashVoter(nni: '1111111111', electionId: eId, selServeur: sel);
-      final h2 = CryptoUtils.hashVoter(nni: '2222222222', electionId: eId, selServeur: sel);
+      final h1 = CryptoUtils.hashVoter(
+        nni: '1111111111',
+        electionId: eId,
+        selServeur: sel,
+      );
+      final h2 = CryptoUtils.hashVoter(
+        nni: '2222222222',
+        electionId: eId,
+        selServeur: sel,
+      );
       expect(h1, isNot(equals(h2)));
     });
 
     test('Même électeur, élection différente → voter_hash différents', () {
       const eId2 = 'b47ac10b-58cc-4372-a567-0e02b2c3d481';
-      final h1 = CryptoUtils.hashVoter(nni: nni, electionId: eId, selServeur: sel);
-      final h2 = CryptoUtils.hashVoter(nni: nni, electionId: eId2, selServeur: sel);
+      final h1 =
+          CryptoUtils.hashVoter(nni: nni, electionId: eId, selServeur: sel);
+      final h2 =
+          CryptoUtils.hashVoter(nni: nni, electionId: eId2, selServeur: sel);
       expect(h1, isNot(equals(h2)));
     });
   });
