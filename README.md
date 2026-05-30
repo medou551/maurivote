@@ -155,13 +155,11 @@ k6 run --env SUPABASE_URL=$SUPABASE_URL k6_vote_load_test.js
 | S4 | J22–J30 | Release : Tests UAT + APK signé + Soutenance |
 
 ---
-
-## 📞 Contact CENI
-
-- 🌐 [myceni.org](https://myceni.org)
-- 📞 +222 45 25 25 25
-- ✉️ contact@ceni.mr
-
+              
+## 📞 Contact 
++222 32055059
++222 22934767
+  
 ---
 
 *République Islamique de Mauritanie — Commission Électorale Nationale Indépendante*
